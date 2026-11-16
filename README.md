@@ -51,6 +51,7 @@ It is intended for users who want a compact WebUI, fast startup, and Anima suppo
 - **Windows 10/11** — primary target
 - **Git**
 - **Python 3.11.x** — 3.11.9 recommended, or use `uv`
+  - On Windows, `webui.bat` automatically looks for Python 3.11 even if another Python version comes first on `PATH`. If yours is in a non-standard location, set `PYTHON` in `webui-user.bat`.
 - An NVIDIA GPU with current CUDA drivers is strongly recommended
 - Enough disk space for Python packages and model weights
 

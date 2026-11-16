@@ -42,10 +42,9 @@ def check_python_version():
 
         modules.errors.print_error_explanation(
             f"""
-            This program is tested with 3.11.9 Python, but you have {major}.{minor}.{micro}.
-            If you encounter any error regarding unsuccessful package/library installation,
-            please downgrade (or upgrade) to the latest version of 3.11 Python,
-            and delete the current Python "venv" folder in WebUI's directory.
+            This program requires Python 3.11.x, but you have {major}.{minor}.{micro}.
+            Install Python 3.11, or set PYTHON in webui-user.bat to the full path of its python.exe.
+            If you changed Python versions, delete the current "venv" folder in WebUI's directory.
 
             Use --skip-python-version-check to suppress this warning
             """
