@@ -575,6 +575,69 @@ def sample_ddpm(model, x, sigmas, extra_args=None, callback=None, disable=None, 
 
 
 @torch.no_grad()
+@torch.no_grad()
+def default_noise_sampler(x):
+    return lambda sigma, sigma_next: torch.randn_like(x)
+
+
+@torch.no_grad()
+def sample_er_sde(model, x, sigmas, extra_args=None, callback=None, disable=None, s_noise=1.0, noise_sampler=None, noise_scaler=None, max_stage=3):
+    extra_args = {} if extra_args is None else extra_args
+    noise_sampler = default_noise_sampler(x) if noise_sampler is None else noise_sampler
+    s_in = x.new_ones([x.shape[0]])
+
+    def default_er_sde_noise_scaler(x):
+        return x * ((x ** 0.3).exp() + 10.0)
+
+    noise_scaler = default_er_sde_noise_scaler if noise_scaler is None else noise_scaler
+    num_integration_points = 200.0
+    point_indice = torch.arange(0, num_integration_points, dtype=torch.float32, device=x.device)
+
+    sigmas = torch.cat([sigmas, sigmas.new_zeros([1])])
+    old_denoised = None
+    old_denoised_d = None
+
+    for i in trange(len(sigmas) - 1, disable=disable):
+        denoised = model(x, sigmas[i] * s_in, **extra_args)
+        if callback is not None:
+            callback({"x": x, "i": i, "sigma": sigmas[i], "sigma_hat": sigmas[i], "denoised": denoised})
+        stage_used = min(max_stage, i + 1)
+        if sigmas[i + 1] == 0:
+            x = denoised
+        else:
+            sigma_s, sigma_t = sigmas[i], sigmas[i + 1]
+            lambda_s = sigma_s.log()
+            lambda_t = sigma_t.log()
+            r_sigma = sigma_t / sigma_s
+            r = noise_scaler(sigma_t) / noise_scaler(sigma_s)
+
+            x = r_sigma * r * x + sigma_t * (1 - r) * denoised
+
+            if stage_used >= 2 and old_denoised is not None and sigmas[i - 1] != 0:
+                dt = lambda_t - lambda_s
+                lambda_step_size = -dt / num_integration_points
+                lambda_pos = lambda_t + point_indice * lambda_step_size
+                scaled_pos = noise_scaler(lambda_pos.exp())
+
+                s = torch.sum(1 / scaled_pos) * lambda_step_size
+                lambda_s_prev = sigmas[i - 1].log()
+                denoised_d = (denoised - old_denoised) / (lambda_s - lambda_s_prev)
+                x = x + sigma_t * (dt + s * noise_scaler(sigma_t)) * denoised_d
+
+                if stage_used >= 3 and old_denoised_d is not None and i >= 2 and sigmas[i - 2] != 0:
+                    s_u = torch.sum((lambda_pos - lambda_s) / scaled_pos) * lambda_step_size
+                    lambda_s_prev_2 = sigmas[i - 2].log()
+                    denoised_u = (denoised_d - old_denoised_d) / ((lambda_s - lambda_s_prev_2) / 2)
+                    x = x + sigma_t * ((dt ** 2) / 2 + s_u * noise_scaler(sigma_t)) * denoised_u
+                old_denoised_d = denoised_d
+
+            if s_noise > 0:
+                x = x + sigma_t * noise_sampler(sigmas[i], sigmas[i + 1]) * s_noise * (sigma_t ** 2 - sigma_s ** 2 * r ** 2).sqrt().nan_to_num(nan=0.0)
+        old_denoised = denoised
+
+    return x
+
+
 def sample_Kohaku_LoNyu_Yog(model, x, sigmas, extra_args=None, callback=None, disable=None, s_churn=None, s_tmin=None, s_tmax=float("inf"), s_noise=None, noise_sampler=None, eta=None):
     s_churn = 0.0 if s_churn is None else s_churn
     s_tmin = 0.0 if s_tmin is None else s_tmin

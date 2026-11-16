@@ -67,11 +67,29 @@ def get_decoder(approximation: int) -> Callable:
     return vae
 
 
+def _anima_cheap_preview(sample, model):
+    from modules_forge.nn._vae import Wan21
+    x = sample[0].movedim(0, -1)
+    factors = torch.tensor(Wan21().latent_rgb_factors, device=x.device, dtype=x.dtype).transpose(0, 1).contiguous()
+    bias = torch.tensor(Wan21().latent_rgb_factors_bias, device=x.device, dtype=x.dtype)
+    x = torch.nn.functional.linear(x, factors, bias)
+    return x.permute(2, 0, 1).unsqueeze(0)
+
+
 @torch.inference_mode()
 def samples_to_images_tensor(sample, approximation=None, model=None):
     """
     Transforms 4-channel latent space images into 3-channel RGB image tensors, with values in range [-1, 1]
     """
+
+    m = model or shared.sd_model
+
+    if sample.shape[1] != 4:
+        if model is None:
+            result = _anima_cheap_preview(sample, m)
+            if result is not None:
+                return result
+        return m.decode_first_stage(sample)
 
     if approximation is None or (shared.state.interrupted and opts.live_preview_fast_interrupt):
         approximation = approximation_indexes.get(opts.show_progress_type, 3)
@@ -81,7 +99,7 @@ def samples_to_images_tensor(sample, approximation=None, model=None):
     vae = get_decoder(approximation)
 
     if vae is None:
-        return (model or shared.sd_model).decode_first_stage(sample)
+        return m.decode_first_stage(sample)
 
     match approximation:
         case 1:
@@ -143,10 +161,6 @@ def images_tensor_to_samples(image, approximation=None, model=None):
 
 def store_latent(decoded):
     state.current_latent = decoded
-
-    if (opts.live_previews_enable and opts.show_progress_every_n_steps > 0) and (shared.state.sampling_step % opts.show_progress_every_n_steps == 0):
-        if not shared.parallel_processing_allowed:
-            shared.state.assign_current_image(sample_to_image(decoded))
 
 
 def is_sampler_using_eta_noise_seed_delta(p):

@@ -195,6 +195,9 @@ def load_vae(model, vae_file=None, vae_source="from unknown source"):
     global vae_dict, base_vae, loaded_vae_file
     # save_settings = False
 
+    if getattr(model, "is_anima", False):
+        return
+
     cache_enabled = shared.opts.sd_vae_checkpoint_cache > 0
 
     if vae_file:
@@ -236,7 +239,16 @@ def load_vae(model, vae_file=None, vae_source="from unknown source"):
 
 @torch.inference_mode()
 def _load_vae_dict(model, vae_dict_1):
-    model.first_stage_model.load_state_dict(vae_dict_1)
+    try:
+        model.first_stage_model.load_state_dict(vae_dict_1)
+    except RuntimeError as e:
+        print(f"Failed to load VAE: the selected VAE is incompatible with this model ({e})")
+        global loaded_vae_file
+        if base_vae is not None and checkpoint_info == model.sd_checkpoint_info:
+            print("Restoring base VAE")
+            model.first_stage_model.load_state_dict(base_vae)
+            loaded_vae_file = None
+            delete_base_vae()
 
 
 def clear_loaded_vae():
@@ -247,6 +259,8 @@ def clear_loaded_vae():
 
 def reload_vae_weights():
     sd_model = shared.sd_model
+    if sd_model is None:
+        return None
     checkpoint_info = sd_model.sd_checkpoint_info
     checkpoint_file = checkpoint_info.filename
     vae_file, vae_source = resolve_vae(checkpoint_file).tuple()

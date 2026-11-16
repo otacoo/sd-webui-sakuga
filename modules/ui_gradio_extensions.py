@@ -41,6 +41,19 @@ def css_html():
     if os.path.exists(user_css):
         head += stylesheet(user_css)
 
+    if shared.opts.hide_styles:
+        head += '''<style>
+.gradio-row.toprow-compact-stylerow,
+#txt2img_styles_row,
+#img2img_styles_row,
+#txt2img_styles_dialog,
+#img2img_styles_dialog,
+#txt2img_style_apply,
+#img2img_style_apply {
+    display: none !important;
+}
+</style>'''
+
     return head
 
 

@@ -1,4 +1,5 @@
 import contextlib
+import os
 
 import torch
 from omegaconf import OmegaConf
@@ -15,6 +16,140 @@ from modules.sd_models_config import find_checkpoint_config
 from modules.sd_models_types import WebuiSdModel
 from modules_forge import forge_clip
 from modules_forge.unet_patcher import UnetPatcher
+
+
+def is_anima_checkpoint(checkpoint_info):
+    if checkpoint_info is None:
+        return False
+    filename = checkpoint_info.filename
+    if os.path.isdir(filename):
+        index_path = os.path.join(filename, "model_index.json")
+        if os.path.isfile(index_path):
+            try:
+                import json
+                with open(index_path, "r") as f:
+                    data = json.load(f)
+                return data.get("_class_name") == "AnimaPipeline"
+            except (json.JSONDecodeError, KeyError):
+                pass
+    return False
+
+
+def is_anima_state_dict(state_dict):
+    if state_dict is None:
+        return False
+    anima_markers = ("blocks.0.mlp.layer1.weight", "x_embedder.proj.1.weight",
+                     "llm_adapter.blocks.0.cross_attn.q_proj.weight")
+    for k in state_dict:
+        for marker in anima_markers:
+            if k.endswith(marker):
+                return True
+    return False
+
+
+def load_anima_engine(checkpoint_info, state_dict=None):
+    from modules_forge.diffusion_engine.anima.anima import AnimaEngine
+    from modules_forge.anima_loader import load_anima_components, load_anima_from_state_dict
+    from modules import shared
+
+    path = checkpoint_info.filename if checkpoint_info is not None else None
+
+    te_path = None
+    te_setting = shared.opts.data.get("sd_text_encoder", "Automatic")
+    if te_setting not in ("Automatic", "None"):
+        from modules.sd_text_encoder import te_dict
+        te_path = te_dict.get(te_setting)
+
+    vae_path = None
+    vae_setting = shared.opts.data.get("sd_vae", "Automatic")
+    if vae_setting not in ("Automatic", "None"):
+        from modules.sd_vae import vae_dict
+        vae_path = vae_dict.get(vae_setting)
+
+    if path and os.path.isdir(path):
+        components = load_anima_components(path)
+    elif state_dict is not None:
+        components = load_anima_from_state_dict(state_dict, vae_path=vae_path, te_path=te_path)
+    else:
+        raise RuntimeError("Anima model must be loaded from a diffusers directory or a safetensors file with the state dict.")
+
+    class AnimaConfig:
+        sampling_settings = {"multiplier": 1.0, "shift": 3.0}
+
+    estimated_config = AnimaConfig()
+
+    engine = AnimaEngine(estimated_config, components)
+
+    sd_model = WebuiSdModel()
+    sd_model.is_sdxl = False
+    sd_model.is_sd2 = False
+    sd_model.is_sd1 = False
+    sd_model.is_anima = True
+    sd_model.ztsnr = False
+
+    sd_model.forge_objects = engine.forge_objects
+    sd_model.forge_objects_original = engine.forge_objects_original
+    sd_model.forge_objects_after_applying_lora = engine.forge_objects_after_applying_lora
+
+    sd_model.encode_first_stage = engine.encode_first_stage
+    sd_model.decode_first_stage = engine.decode_first_stage
+    sd_model.get_learned_conditioning = engine.get_learned_conditioning
+    sd_model.get_first_stage_encoding = lambda x: x
+    sd_model.ema_scope = lambda *args, **kwargs: contextlib.nullcontext()
+    class AnimaCondStageModel:
+        def process_texts(self, texts):
+            from modules import sd_hijack
+            token_count = len(engine.text_processing_engine_anima.tokenize(texts)[0][0])
+            return texts, token_count
+
+        def get_target_prompt_token_count(self, token_count):
+            return max(999, token_count)
+
+        def tokenize(self, text):
+            return engine.text_processing_engine_anima.tokenize([text])[0][0]
+
+        def encode_embedding_init_text(self, text, num):
+            return torch.zeros(num, 1024)
+
+        def encode_token_weights(self, tokens):
+            return torch.zeros(1, 1024), None
+
+        def load_sd(self, sd):
+            pass
+
+        def state_dict(self):
+            return {}
+
+        def clip_layer(self, layer_idx):
+            pass
+
+        def reset_clip_layer(self):
+            pass
+
+    sd_model.cond_stage_model = AnimaCondStageModel()
+    sd_model.clip = sd_model.cond_stage_model
+    sd_model.first_stage_model = components["vae"]
+    sd_model.model = type("Model", (), {"diffusion_model": components["transformer"], "conditioning_key": None, "state_dict": lambda self: {}})()
+
+    sd_model.sd_model_hash = ""
+    sd_model.sd_model_checkpoint = checkpoint_info.filename if checkpoint_info else ""
+    sd_model.sd_checkpoint_info = checkpoint_info
+    sd_model.current_lora_hash = str([])
+    sd_model.tiling_enabled = False
+    sd_model.parameterization = "flow"
+    beta_start = 0.00085
+    beta_end = 0.012
+    betas = torch.linspace(beta_start ** 0.5, beta_end ** 0.5, 1000, dtype=torch.float64) ** 2
+    alphas = 1.0 - betas
+    alphas_cumprod = torch.cumprod(alphas, dim=0)
+    sd_model.alphas_cumprod = alphas_cumprod
+    sd_model.alphas_cumprod_original = alphas_cumprod
+    sd_model.cond_stage_key = None
+
+    sd_model.latent_channels = 16
+    sd_model._anima_engine = engine
+
+    return sd_model
 
 
 class FakeObject:
@@ -107,6 +242,10 @@ def load_checkpoint_guess_config(sd, output_vae=True, output_clip=True, output_c
 
 @torch.no_grad()
 def load_model_for_a1111(timer, checkpoint_info=None, state_dict=None) -> WebuiSdModel:
+    if is_anima_checkpoint(checkpoint_info) or is_anima_state_dict(state_dict):
+        print("[Forge] Detected Anima model, using Anima engine")
+        return load_anima_engine(checkpoint_info, state_dict)
+
     ztsnr = False
     if state_dict is not None:
         ztsnr = state_dict.pop("ztsnr", None) is not None
@@ -268,6 +407,9 @@ def apply_alpha_schedule_override(sd_model, p=None):
     """
 
     if not (hasattr(sd_model, "alphas_cumprod") and hasattr(sd_model, "alphas_cumprod_original")):
+        return
+
+    if sd_model.alphas_cumprod is None or sd_model.alphas_cumprod_original is None:
         return
 
     sd_model.alphas_cumprod = sd_model.alphas_cumprod_original.to(shared.device)

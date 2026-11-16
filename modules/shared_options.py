@@ -118,7 +118,7 @@ options_templates.update(
         {
             "ESRGAN_tile": OptionInfo(256, "Tile Size for Upscalers", gr.Slider, {"minimum": 0, "maximum": 512, "step": 16}).info("0 = no tiling"),
             "ESRGAN_tile_overlap": OptionInfo(16, "Tile Overlap for Upscalers", gr.Slider, {"minimum": 0, "maximum": 64, "step": 4}).info("low values = visible seam"),
-            "composite_tiles_on_gpu": OptionInfo(False, "Composite the Tiles on GPU").info("improve performance and resource utilization"),
+            "composite_tiles_on_gpu": OptionInfo(True, "Composite the Tiles on GPU").info("improve performance and resource utilization"),
             "upscaler_for_img2img": OptionInfo("None", "Upscaler for img2img", gr.Dropdown, lambda: {"choices": [x.name for x in shared.sd_upscalers]}).info("for resizing the input image if the image resolution is smaller than the generation resolution"),
             "upscaling_max_images_in_cache": OptionInfo(4, "Number of upscaled images to cache", gr.Slider, {"minimum": 0, "maximum": 8, "step": 1}),
             "prefer_fp16_upscalers": OptionInfo(False, "Prefer to load Upscaler in half precision").info("increase speed; reduce quality; will try <b>fp16</b>, then <b>bf16</b>, then fall back to <b>fp32</b> if not supported").needs_restart(),
@@ -189,6 +189,29 @@ options_templates.update(
             "sdxl_crop_left": OptionInfo(0, "[SDXL] Crop-Left Coordinate"),
             "sdxl_refiner_low_aesthetic_score": OptionInfo(2.5, "[SDXL] Low Aesthetic Score", gr.Number),
             "sdxl_refiner_high_aesthetic_score": OptionInfo(6.0, "[SDXL] High Aesthetic Score", gr.Number),
+        },
+    )
+)
+
+options_templates.update(
+    options_section(
+        ("anima", "Anima", "sd"),
+        {
+            "anima_info": OptionHTML(
+                """
+Anima is a text-to-image model based on NVIDIA Cosmos architecture with a Qwen3-0.6B text encoder.
+<br><br>
+<b>Required files for safetensors-based loading:</b>
+<ul style='margin-left: 1.5em'>
+  <li><code>models/Stable-diffusion/</code> — the Anima transformer checkpoint (<code>.safetensors</code>)</li>
+  <li><code>models/VAE/qwen_image_vae.safetensors</code> — the Anima VAE weights</li>
+  <li><code>models/text_encoder/qwen_3_06b_base.safetensors</code> — the Qwen3-0.6B text encoder weights</li>
+  <li><code>modules_forge/text_processing/tokenizer/</code> — Qwen2 tokenizer files (tokenizer_config.json, vocab.json, merges.txt)</li>
+  <li><code>modules_forge/text_processing/tokenizer_2/</code> — T5 tokenizer files (tokenizer_config.json, special_tokens_map.json, spiece.model)</li>
+</ul>
+                """
+            ),
+            "sd_text_encoder": OptionInfo("Automatic", "Text Encoder", gr.Dropdown, lambda: {"choices": shared_items.sd_text_encoder_items()}, refresh=shared_items.refresh_text_encoder_list).info("Anima text encoder; Automatic = use qwen_3_06b_base.safetensors from models/text_encoder/"),
         },
     )
 )
@@ -313,7 +336,7 @@ However, the resulting UI is quite... sluggish.
             "extra_networks_card_height": OptionInfo(0, "Card Height for Extra Networks").info("in pixels; 0 = auto"),
             "extra_networks_card_text_scale": OptionInfo(1.0, "Card Text Scale", gr.Slider, {"minimum": 0.0, "maximum": 2.0, "step": 0.05}).info("1 = original size"),
             "extra_networks_card_show_desc": OptionInfo(True, "Show description on cards"),
-            "extra_networks_card_description_is_html": OptionInfo(False, "Treat description as raw HTML"),
+            "extra_networks_card_description_is_html": OptionInfo(True, "Treat description as raw HTML"),
             "extra_networks_card_order_field": OptionInfo("Path", "Default sorting method for Extra Networks cards", gr.Dropdown, {"choices": ("Path", "Name", "Date Created", "Date Modified")}).needs_reload_ui(),
             "extra_networks_card_order": OptionInfo("Ascending", "Default sorting order for Extra Networks cards", gr.Radio, {"choices": ("Ascending", "Descending")}).needs_reload_ui(),
             "extra_networks_add_text_separator": OptionInfo(" ", "Extra Networks Separator").info("additional text to insert before the Extra Networks syntax"),
@@ -333,7 +356,7 @@ options_templates.update(
             "keyedit_delimiters": OptionInfo(r".,\/!?%^*;:{}=`~() ", "RegEx Delimiters when editing the prompt with Ctrl + Up/Down"),
             "keyedit_delimiters_whitespace": OptionInfo(["Tab", "Carriage Return", "Line Feed"], "Whitespace Delimiters when editing the prompt with Ctrl + Up/Down", gr.CheckboxGroup, {"choices": ("Tab", "Carriage Return", "Line Feed")}),
             "keyedit_move": OptionInfo(True, "Alt + Left/Right moves prompt chunks"),
-            "disable_token_counters": OptionInfo(False, "Disable Token Counter"),
+            "disable_token_counters": OptionInfo(True, "Disable Token Counter"),
             "include_styles_into_token_counters": OptionInfo(True, "Include enabled Styles in Token Count"),
         },
     )
@@ -363,16 +386,17 @@ options_templates.update(
     options_section(
         ("ui_alternatives", "UI Alternatives", "ui"),
         {
-            "show_scheduler": OptionInfo(False, "Display the Scheduler Dropdown").needs_reload_ui(),
+            "show_scheduler": OptionInfo(True, "Display the Scheduler Dropdown").needs_reload_ui(),
             "show_refiner": OptionInfo(False, "Display the Refiner Accordion").info('"deprecated" feature for SDXL').needs_reload_ui(),
             "show_rescale_cfg": OptionInfo(False, "Display the Rescale CFG Slider").info("feature for v-pred checkpoints").needs_reload_ui(),
             "show_mahiro": OptionInfo(False, "Display the MaHiRo Toggle").info('see <a href="https://huggingface.co/spaces/yoinked/blue-arxiv">blue-arxiv</a> - <b>id:</b> <ins>2024-1208.1</ins>').needs_reload_ui(),
+            "hide_styles": OptionInfo(False, "Hide the Styles feature.").needs_reload_ui(),
             "paste_safe_guard": OptionInfo(False, 'Disable the "Read generation parameters" button (↙️) when negative prompt is not empty'),
             "div_classic": OptionDiv(),
-            "compact_prompt_box": OptionInfo(False, "Compact Prompt Layout").info("put prompts inside the Generate tab, leaving more space for the gallery").needs_reload_ui(),
+            "compact_prompt_box": OptionInfo(True, "Compact Prompt Layout").info("put prompts inside the Generate tab, leaving more space for the gallery").needs_reload_ui(),
             "dimensions_and_batch_together": OptionInfo(True, "Show Width/Height and Batch sliders in same row").needs_reload_ui(),
             "sd_checkpoint_dropdown_use_short": OptionInfo(False, "Show filenames without folder in the Checkpoint dropdown").info("if disabled, models under subdirectories will be listed like sdxl/anime.safetensors"),
-            "hires_fix_show_sampler": OptionInfo(False, "[Hires. fix]: Show checkpoint, sampler, scheduler, and cfg options").needs_reload_ui(),
+            "hires_fix_show_sampler": OptionInfo(True, "[Hires. fix]: Show checkpoint, sampler, scheduler, and cfg options").needs_reload_ui(),
             "hires_fix_show_prompts": OptionInfo(False, "[Hires. fix]: Show prompt and negative prompt textboxes").needs_reload_ui(),
             "txt2img_settings_accordion": OptionInfo(False, "Put txt2img parameters under Accordion").needs_reload_ui(),
             "img2img_settings_accordion": OptionInfo(False, "Put img2img parameters under Accordion").needs_reload_ui(),
@@ -390,7 +414,7 @@ options_templates.update(
             "ui_tab_order": OptionInfo([], "UI Tab Order", ui_components.DropdownMulti, lambda: {"choices": list(shared.tab_names)}).needs_reload_ui(),
             "hidden_tabs": OptionInfo([], "Hide UI Tabs", ui_components.DropdownMulti, lambda: {"choices": list(shared.tab_names)}).needs_reload_ui(),
             "ui_reorder_list": OptionInfo([], "Parameter order for txt2img / img2img", ui_components.DropdownMulti, lambda: {"choices": list(shared_items.ui_reorder_categories())}).info("selected items appear first").needs_reload_ui(),
-            "gradio_theme": OptionInfo("Default", "Gradio Theme", ui_components.DropdownEditable, lambda: {"choices": ["Default", *shared_gradio_themes.gradio_hf_hub_themes]}).needs_reload_ui(),
+            "gradio_theme": OptionInfo("reilnuud/polite", "Gradio Theme", ui_components.DropdownEditable, lambda: {"choices": ["Default", *shared_gradio_themes.gradio_hf_hub_themes]}).needs_reload_ui(),
             "gradio_themes_cache": OptionInfo(True, "Cache selected theme locally"),
             "show_progress_in_title": OptionInfo(True, "Show generation progress in window title"),
             "send_seed": OptionInfo(True, 'Send the Seed information when using the "Send to" buttons'),
@@ -452,8 +476,8 @@ options_templates.update(
                 """
             ),
             "live_preview_fast_interrupt": OptionInfo(False, "Return image with the selected preview method on interruption").info("speed up interruption"),
-            "js_live_preview_in_modal_lightbox": OptionInfo(False, "Show the live previews in full page image viewer"),
-            "show_progress_every_n_steps": OptionInfo(10, "Generate live preview every N step", gr.Slider, {"minimum": -1, "maximum": 32, "step": 1}).info("-1 = only after completion of a batch"),
+            "js_live_preview_in_modal_lightbox": OptionInfo(True, "Show the live previews in full page image viewer"),
+            "show_progress_every_n_steps": OptionInfo(3, "Generate live preview every N step", gr.Slider, {"minimum": -1, "maximum": 32, "step": 1}).info("-1 = only after completion of a batch"),
             "live_preview_refresh_period": OptionInfo(1000, "Progress Bar and Preview update interval").info("in ms"),
         },
     )

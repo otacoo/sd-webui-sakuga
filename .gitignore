@@ -1,4 +1,5 @@
 __pycache__
+*.py[cod]
 **/tokenizer/tokenizer.json
 *.bin
 *.ckpt
@@ -26,6 +27,8 @@ __pycache__
 /ui-config.json
 /user.css
 /venv
+/.venv
 /webui-user.bat
 /webui-user.sh
+/start-webui.bat
 notification.mp3

@@ -1580,3 +1580,28 @@ body.resizing .resize-handle {
 .extra-network-tree .tree-list-content:hover .button-row {
     visibility: visible;
 }
+
+#pnginfo_image {
+    height: 75vh !important;
+}
+
+#txt2img_prompt > label > textarea {
+    min-height: 145px !important;
+}
+
+.thumbnail-item {
+    aspect-ratio: auto !important;
+}
+
+#txt2img_gallery, #img2img_gallery {
+    min-height: 65vh;
+}
+
+#txt2img_gallery_container, #img2img_gallery_container {
+    height: 65vh !important;
+}
+
+#txt2img_gallery > .grid-wrap, #txt2img_gallery > .preview,
+#img2img_gallery > .grid-wrap, #img2img_gallery > .preview {
+    max-height: 65vh;
+}

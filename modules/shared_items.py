@@ -16,6 +16,16 @@ def refresh_vae_list():
     modules.sd_vae.refresh_vae_list()
 
 
+def sd_text_encoder_items():
+    import modules.sd_text_encoder
+    return ["Automatic", "None"] + list(modules.sd_text_encoder.te_dict)
+
+
+def refresh_text_encoder_list():
+    import modules.sd_text_encoder
+    modules.sd_text_encoder.refresh_te_list()
+
+
 def cross_attention_optimizations():
     return ["Automatic"]
 

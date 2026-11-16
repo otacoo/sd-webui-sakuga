@@ -5,7 +5,38 @@ from ldm_patched.modules.ops import cleanup_cache
 from ldm_patched.modules.samplers import sampling_function
 
 
+def anima_preprocess_cross_attn(cross_attn: torch.Tensor, t5_ids: torch.Tensor, t5_weights: torch.Tensor, sd_model) -> torch.Tensor:
+    device = cross_attn.device
+    dtype = sd_model.forge_objects.unet.model.dtype if hasattr(sd_model.forge_objects.unet.model, "dtype") else cross_attn.dtype
+
+    transformer = sd_model.forge_objects.unet.model
+    if hasattr(transformer, "diffusion_model") and hasattr(transformer.diffusion_model, "preprocess_text_embeds"):
+        cross_attn = transformer.diffusion_model.preprocess_text_embeds(cross_attn.to(dtype=dtype), t5_ids.to(device=device))
+    elif hasattr(transformer, "preprocess_text_embeds"):
+        cross_attn = transformer.preprocess_text_embeds(cross_attn.to(dtype=dtype), t5_ids.to(device=device))
+
+    if t5_weights is not None:
+        cross_attn *= t5_weights.unsqueeze(-1).to(cross_attn)
+
+    if cross_attn.shape[1] < 512:
+        cross_attn = torch.nn.functional.pad(cross_attn, (0, 0, 0, 512 - cross_attn.shape[1]))
+
+    return cross_attn
+
+
 def cond_from_a1111_to_patched_ldm(cond):
+    if isinstance(cond, dict) and "qwen_cond" in cond and "t5_ids" in cond:
+        from modules import shared
+        qwen_cond_list = cond["qwen_cond"]
+        t5_ids = cond["t5_ids"][0] if isinstance(cond["t5_ids"], list) else cond["t5_ids"]
+        t5_weights = cond["t5_weights"][0] if isinstance(cond["t5_weights"], list) else cond["t5_weights"]
+        cross_attn = anima_preprocess_cross_attn(qwen_cond_list[0], t5_ids, t5_weights, shared.sd_model)
+        result = dict(
+            cross_attn=cross_attn,
+            model_conds=dict(c_crossattn=CONDCrossAttn(cross_attn)),
+        )
+        return [result]
+
     if isinstance(cond, torch.Tensor):
         result = dict(
             cross_attn=cond,

@@ -21,6 +21,7 @@ samplers_k_diffusion = [
     ("DPM++ 2M SDE", "sample_dpmpp_2m_sde", ["k_dpmpp_2m_sde_ka"], {"scheduler": "exponential", "brownian_noise": True}),
     ("DPM++ 3M SDE", "sample_dpmpp_3m_sde", ["k_dpmpp_3m_sde"], {"scheduler": "exponential", "discard_next_to_last_sigma": True, "brownian_noise": True}),
     ("Euler a", "sample_euler_ancestral", ["k_euler_a", "k_euler_ancestral"], {"uses_ensd": True}),
+    ("ER SDE", "sample_er_sde", ["er_sde"], {}),
     ("Euler", "sample_euler", ["k_euler"], {}),
     ("LMS", "sample_lms", ["k_lms"], {}),
     ("Heun", "sample_heun", ["k_heun"], {"second_order": True}),
@@ -63,6 +64,19 @@ class CFGDenoiserKDiffusion(sd_samplers_cfg_denoiser.CFGDenoiser):
         if self.model_wrap is None:
             denoiser = k_diffusion.external.CompVisVDenoiser if shared.sd_model.parameterization == "v" else k_diffusion.external.CompVisDenoiser
             self.model_wrap = denoiser(shared.sd_model, quantize=True)
+
+            if shared.sd_model.parameterization == "flow":
+                try:
+                    k_model = shared.sd_model.forge_objects.unet.model
+                    if hasattr(k_model, 'predictor') and hasattr(k_model.predictor, 'sigmas'):
+                        predictor = k_model.predictor
+                        new_sigmas = predictor.sigmas.to(self.model_wrap.sigmas.device, self.model_wrap.sigmas.dtype)
+                        new_log_sigmas = new_sigmas.log()
+                        self.model_wrap.register_buffer("sigmas", new_sigmas)
+                        self.model_wrap.register_buffer("log_sigmas", new_log_sigmas)
+                        print(f"[Forge] Flow sigma range: min={new_sigmas[0].item():.6f}, max={new_sigmas[-1].item():.6f}")
+                except Exception as e:
+                    print(f"[Forge] Failed to set flow sigmas: {e}")
 
         return self.model_wrap
 

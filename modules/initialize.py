@@ -30,6 +30,16 @@ def imports():
     import pytorch_lightning  # noqa: F401
     startup_timer.record("import torch")
 
+    import numpy as np
+    if not hasattr(np, 'bool8'):
+        np.bool8 = np.bool_
+    if not hasattr(np, 'float_'):
+        np.float_ = np.float64
+    if not hasattr(np, 'complex_'):
+        np.complex_ = np.complex128
+    if not hasattr(np, 'obj2sctype'):
+        np.obj2sctype = lambda obj: np.dtype(obj).type
+
     os.environ.setdefault("GRADIO_ANALYTICS_ENABLED", "False")
 
     import gradio  # noqa: F401
@@ -127,6 +137,10 @@ def initialize_rest(*, reload_script_modules=False):
     from modules import sd_vae
     sd_vae.refresh_vae_list()
     startup_timer.record("refresh VAE")
+
+    from modules import sd_text_encoder
+    sd_text_encoder.refresh_te_list()
+    startup_timer.record("refresh text encoder")
 
     from modules import sd_unet
     sd_unet.list_unets()

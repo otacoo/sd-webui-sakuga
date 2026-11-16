@@ -11,6 +11,7 @@ from ldm_patched.modules import model_management
 from modules import cache, devices, errors, extra_networks, hashes, modelloader, paths, processing, script_callbacks, sd_vae, shared
 from modules.timer import Timer
 from modules_forge import forge_loader
+from modules_forge.forge_loader import is_anima_checkpoint
 
 model_dir = "Stable-diffusion"
 model_path = os.path.abspath(os.path.join(paths.models_path, model_dir))
@@ -142,6 +143,43 @@ def list_models():
 
     model_list = modelloader.load_models(model_path=model_path, model_url=model_url, command_path=shared.cmd_opts.ckpt_dir, ext_filter=[".ckpt", ".safetensors"], download_name="realisticVisionV51_v51VAE.safetensors", ext_blacklist=[".vae.ckpt", ".vae.safetensors"])
 
+    # Scan for Anima diffusers directories
+    import json
+    for scan_path in [model_path]:
+        if not os.path.isdir(scan_path):
+            continue
+        try:
+            for entry in os.scandir(scan_path):
+                if entry.is_dir():
+                    index_path = os.path.join(entry.path, "model_index.json")
+                    if os.path.isfile(index_path):
+                        try:
+                            with open(index_path, "r") as f:
+                                data = json.load(f)
+                            if data.get("_class_name") == "AnimaPipeline":
+                                checkpoint_info = CheckpointInfo(entry.path)
+                                checkpoint_info.register()
+                        except (json.JSONDecodeError, KeyError, PermissionError):
+                            pass
+                    # Also check subdirectories one level deep for diffusers format
+                    try:
+                        for subentry in os.scandir(entry.path):
+                            if subentry.is_dir():
+                                subindex_path = os.path.join(subentry.path, "model_index.json")
+                                if os.path.isfile(subindex_path):
+                                    try:
+                                        with open(subindex_path, "r") as f:
+                                            data = json.load(f)
+                                        if data.get("_class_name") == "AnimaPipeline":
+                                            checkpoint_info = CheckpointInfo(subentry.path)
+                                            checkpoint_info.register()
+                                    except (json.JSONDecodeError, KeyError, PermissionError):
+                                        pass
+                    except PermissionError:
+                        pass
+        except PermissionError:
+            pass
+
     if os.path.exists(cmd_ckpt):
         checkpoint_info = CheckpointInfo(cmd_ckpt)
         checkpoint_info.register()
@@ -182,7 +220,7 @@ model_hash = hashes.partial_hash_from_cache
 
 
 def select_checkpoint():
-    """Raises `FileNotFoundError` if no checkpoints are found."""
+    """Returns the CheckpointInfo for the selected model, or None if no checkpoints are found."""
     model_checkpoint = shared.opts.sd_model_checkpoint
 
     checkpoint_info = checkpoint_aliases.get(model_checkpoint, None)
@@ -197,7 +235,9 @@ def select_checkpoint():
         if shared.cmd_opts.ckpt_dir is not None:
             error_message += f"\n - directory {os.path.abspath(shared.cmd_opts.ckpt_dir)}"
         error_message += "Can't run without a checkpoint. Find and place a .ckpt or .safetensors file into any of those locations."
-        raise FileNotFoundError(error_message)
+        print("", file=sys.stderr)
+        print(f"\033[33m{error_message}\033[0m", file=sys.stderr)
+        return None
 
     checkpoint_info = next(iter(checkpoints_list.values()))
     if model_checkpoint is not None:
@@ -330,13 +370,15 @@ class SdModelData:
                     return self.sd_model
 
                 try:
-                    load_model()
+                    result = load_model()
 
                 except Exception as e:
-                    errors.display(e, "loading stable diffusion model", full_traceback=True)
                     print("", file=sys.stderr)
-                    print("Stable diffusion model failed to load", file=sys.stderr)
+                    errors.display(e, "loading stable diffusion model")
+                    print("\033[33mStable diffusion model failed to load\033[0m", file=sys.stderr)
                     self.sd_model = None
+
+                self.was_loaded_at_least_once = True
 
         return self.sd_model
 
@@ -359,6 +401,8 @@ def get_empty_cond(sd_model):
     if hasattr(sd_model, "conditioner"):
         d = sd_model.get_learned_conditioning([""])
         return d["crossattn"]
+    elif getattr(sd_model, "is_anima", False):
+        return sd_model.get_learned_conditioning([""])
     else:
         return sd_model.cond_stage_model([""])
 
@@ -384,6 +428,9 @@ def load_model(checkpoint_info=None, already_loaded_state_dict=None):
     from modules import sd_hijack
 
     checkpoint_info = checkpoint_info or select_checkpoint()
+    if checkpoint_info is None:
+        print("\033[33mNo model loaded — place a .ckpt or .safetensors file in models/Stable-diffusion/\033[0m")
+        return None
 
     timer = Timer()
 
@@ -424,10 +471,12 @@ def load_model(checkpoint_info=None, already_loaded_state_dict=None):
 
     if already_loaded_state_dict is not None:
         state_dict = already_loaded_state_dict
+    elif is_anima_checkpoint(checkpoint_info):
+        state_dict = {}
     else:
         state_dict = get_checkpoint_state_dict(checkpoint_info, timer)
 
-    if shared.opts.sd_checkpoint_cache > 0:
+    if shared.opts.sd_checkpoint_cache > 0 and not is_anima_checkpoint(checkpoint_info):
         # cache newly loaded model
         checkpoints_loaded[checkpoint_info] = state_dict.copy()
         # clean up cache if limit is reached
