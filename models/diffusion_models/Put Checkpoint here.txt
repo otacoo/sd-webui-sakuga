@@ -1,1 +1,7 @@
-Place diffusion model checkpoints (.safetensors or .ckpt) in this folder.
+Place diffusion model checkpoints (.safetensors or .ckpt) in this folder or a model-family subfolder:
+
+  SD15/
+  SDXL/
+  Illustrious/
+  Pony/
+  Anima/

@@ -1,1 +1,7 @@
-Place LoRA and LyCORIS files in this folder.
+Place LoRA and LyCORIS files in this folder or a model-family subfolder:
+
+  SD15/
+  SDXL/
+  Illustrious/
+  Pony/
+  Anima/

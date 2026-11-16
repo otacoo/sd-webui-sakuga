@@ -88,21 +88,35 @@ By default the launcher uses `--no-download-sd-model`, so the WebUI will start w
 
 Model weights are not included with Sakuga. Download the checkpoints and components you need from their respective sources.
 
-### SD1 and SDXL
-
-Place regular checkpoints in:
+Sakuga uses ComfyUI-style model folders. Checkpoints and LoRAs are scanned recursively, so you can place files directly in the parent folder or organize them by model family:
 
 ```text
-models/diffusion_models/
+models/
+├─ diffusion_models/
+│  ├─ SD15/
+│  ├─ SDXL/
+│  ├─ Illustrious/
+│  ├─ Pony/
+│  └─ Anima/
+└─ loras/
+   ├─ SD15/
+   ├─ SDXL/
+   ├─ Illustrious/
+   ├─ Pony/
+   └─ Anima/
 ```
+
+### SD1 and SDXL
+
+Place SD1/SDXL checkpoints directly in `models/diffusion_models/` or in a model-family subfolder.
 
 Other model types use the usual folders:
 
 ```text
 models/loras/          LoRA and LyCORIS
-models/VAE/           VAE files
-models/embeddings/    textual inversions
-models/ESRGAN/        upscalers
+models/VAE/            VAE files
+models/embeddings/     textual inversions
+models/ESRGAN/         upscalers
 ```
 
 ### Anima
@@ -114,7 +128,8 @@ Anima needs the transformer, the VAE, and the Qwen3-0.6B text encoder. The token
 ```text
 models/
 ├─ diffusion_models/
-│  └─ anima.safetensors
+│  └─ Anima/
+│     └─ anima.safetensors
 ├─ VAE/
 │  └─ qwen_image_vae.safetensors
 └─ text_encoders/
