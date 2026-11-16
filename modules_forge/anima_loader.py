@@ -6,7 +6,7 @@ import safetensors.torch
 from modules import paths
 
 
-MODELS_DIR = os.path.join(paths.models_path)
+MODELS_DIR = os.path.abspath(paths.models_path)
 VAE_DIR = os.path.join(MODELS_DIR, "VAE")
 TE_DIR = os.path.join(MODELS_DIR, "text_encoders")
 
