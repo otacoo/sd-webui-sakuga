@@ -1,0 +1,1 @@
+Place LoRA and LyCORIS files in this folder.

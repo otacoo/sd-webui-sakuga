@@ -93,13 +93,13 @@ Model weights are not included with Sakuga. Download the checkpoints and compone
 Place regular checkpoints in:
 
 ```text
-models/Stable-diffusion/
+models/diffusion_models/
 ```
 
 Other model types use the usual folders:
 
 ```text
-models/Lora/          LoRA and LyCORIS
+models/loras/          LoRA and LyCORIS
 models/VAE/           VAE files
 models/embeddings/    textual inversions
 models/ESRGAN/        upscalers
@@ -113,20 +113,20 @@ Anima needs the transformer, the VAE, and the Qwen3-0.6B text encoder. The token
 
 ```text
 models/
-├─ Stable-diffusion/
+├─ diffusion_models/
 │  └─ anima.safetensors
 ├─ VAE/
 │  └─ qwen_image_vae.safetensors
-└─ text_encoder/
+└─ text_encoders/
    └─ qwen_3_06b_base.safetensors
 ```
 
-Create `models/text_encoder/` if it does not exist. The default filenames are `qwen_image_vae.safetensors` and `qwen_3_06b_base.safetensors`; you can select different files in Settings if needed.
+Create `models/text_encoders/` if it does not exist. The default filenames are `qwen_image_vae.safetensors` and `qwen_3_06b_base.safetensors`; you can select different files in Settings if needed.
 
 #### Option B — diffusers directory
 
 ```text
-models/Stable-diffusion/Anima/
+models/diffusion_models/Anima/
 ├─ model_index.json
 ├─ transformer/
 │  └─ diffusion_pytorch_model.safetensors
@@ -144,7 +144,7 @@ models/Stable-diffusion/Anima/
 }
 ```
 
-If `text_encoder/` is omitted, Sakuga uses `models/text_encoder/qwen_3_06b_base.safetensors`. Anima directories are detected automatically and appear in the checkpoint list.
+If `text_encoder/` is omitted, Sakuga uses `models/text_encoders/qwen_3_06b_base.safetensors`. Anima directories are detected automatically and appear in the checkpoint list.
 
 ### Using Anima
 
@@ -211,9 +211,9 @@ chmod +x webui.sh webui-user.sh
 
 ## Troubleshooting
 
-- **No model loaded** — place an SD1/SDXL checkpoint or an Anima model in `models/Stable-diffusion/` and refresh the checkpoint list.
+- **No model loaded** — place an SD1/SDXL checkpoint or an Anima model in `models/diffusion_models/` and refresh the checkpoint list.
 - **Anima VAE not found** — check for `models/VAE/qwen_image_vae.safetensors`.
-- **Anima text encoder not found** — check for `models/text_encoder/qwen_3_06b_base.safetensors`.
+- **Anima text encoder not found** — check for `models/text_encoders/qwen_3_06b_base.safetensors`.
 - **Tokenizer errors** — make sure `modules_forge/text_processing/tokenizer/` and `tokenizer_2/` have not been deleted. Restore them with `git checkout -- modules_forge/text_processing`.
 - **Installer asks about renaming `webui-user.bat`** — accept if you want the installer to generate a clean `start-webui.bat`; the original `webui-user.bat` is kept in Git history if you need it back.
 

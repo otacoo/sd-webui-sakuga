@@ -1,0 +1,1 @@
+Place diffusion model checkpoints (.safetensors or .ckpt) in this folder.

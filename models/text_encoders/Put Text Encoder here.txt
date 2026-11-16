@@ -1,0 +1,2 @@
+Place text encoder weights here.
+For Anima, the default file is qwen_3_06b_base.safetensors.

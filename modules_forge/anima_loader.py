@@ -8,7 +8,7 @@ from modules import paths
 
 MODELS_DIR = os.path.join(paths.models_path)
 VAE_DIR = os.path.join(MODELS_DIR, "VAE")
-TE_DIR = os.path.join(MODELS_DIR, "text_encoder")
+TE_DIR = os.path.join(MODELS_DIR, "text_encoders")
 
 TOKENIZER_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "text_processing", "tokenizer")
 TOKENIZER2_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "text_processing", "tokenizer_2")
@@ -193,7 +193,7 @@ def load_anima_text_encoder(filepath=None):
     if filepath is None or not os.path.isfile(filepath):
         raise FileNotFoundError(
             f"{ANIMA_TE_FILENAME} not found in {TE_DIR}. "
-            f"Please place the Qwen3-0.6B text encoder weights file in the text_encoder models folder."
+            f"Please place the Qwen3-0.6B text encoder weights file in the text_encoders models folder."
         )
 
     print(f"Loading Anima Text Encoder: {filepath}")

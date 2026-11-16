@@ -3,7 +3,7 @@ import os
 
 from modules import paths, shared
 
-te_path = os.path.abspath(os.path.join(paths.models_path, "text_encoder"))
+te_path = os.path.abspath(os.path.join(paths.models_path, "text_encoders"))
 te_dict = {}
 
 
@@ -22,8 +22,9 @@ def refresh_te_list():
 
     if shared.cmd_opts.ckpt_dir is not None and os.path.isdir(shared.cmd_opts.ckpt_dir):
         paths_list += [
-            os.path.join(shared.cmd_opts.ckpt_dir, "**/text_encoder/*.ckpt"),
-            os.path.join(shared.cmd_opts.ckpt_dir, "**/text_encoder/*.safetensors"),
+            os.path.join(shared.cmd_opts.ckpt_dir, "**/text_encoders/*.ckpt"),
+            os.path.join(shared.cmd_opts.ckpt_dir, "**/text_encoders/*.pt"),
+            os.path.join(shared.cmd_opts.ckpt_dir, "**/text_encoders/*.safetensors"),
         ]
 
     candidates = []

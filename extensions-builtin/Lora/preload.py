@@ -9,5 +9,5 @@ def preload(parser):
         "--lora-dir",
         type=normalized_filepath,
         help="Path to directory with LoRA networks",
-        default=join(paths.models_path, "Lora"),
+        default=join(paths.models_path, "loras"),
     )

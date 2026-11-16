@@ -203,15 +203,15 @@ Anima is a text-to-image model based on NVIDIA Cosmos architecture with a Qwen3-
 <br><br>
 <b>Required files for safetensors-based loading:</b>
 <ul style='margin-left: 1.5em'>
-  <li><code>models/Stable-diffusion/</code> — the Anima transformer checkpoint (<code>.safetensors</code>)</li>
+  <li><code>models/diffusion_models/</code> — the Anima transformer checkpoint (<code>.safetensors</code>)</li>
   <li><code>models/VAE/qwen_image_vae.safetensors</code> — the Anima VAE weights</li>
-  <li><code>models/text_encoder/qwen_3_06b_base.safetensors</code> — the Qwen3-0.6B text encoder weights</li>
+  <li><code>models/text_encoders/qwen_3_06b_base.safetensors</code> — the Qwen3-0.6B text encoder weights</li>
   <li><code>modules_forge/text_processing/tokenizer/</code> — Qwen2 tokenizer files (tokenizer_config.json, vocab.json, merges.txt)</li>
   <li><code>modules_forge/text_processing/tokenizer_2/</code> — T5 tokenizer files (tokenizer_config.json, tokenizer.json, special_tokens_map.json)</li>
 </ul>
                 """
             ),
-            "sd_text_encoder": OptionInfo("Automatic", "Text Encoder", gr.Dropdown, lambda: {"choices": shared_items.sd_text_encoder_items()}, refresh=shared_items.refresh_text_encoder_list).info("Anima text encoder; Automatic = use qwen_3_06b_base.safetensors from models/text_encoder/"),
+            "sd_text_encoder": OptionInfo("Automatic", "Text Encoder", gr.Dropdown, lambda: {"choices": shared_items.sd_text_encoder_items()}, refresh=shared_items.refresh_text_encoder_list).info("Anima text encoder; Automatic = use qwen_3_06b_base.safetensors from models/text_encoders/"),
         },
     )
 )

@@ -13,7 +13,7 @@ from modules.timer import Timer
 from modules_forge import forge_loader
 from modules_forge.forge_loader import is_anima_checkpoint
 
-model_dir = "Stable-diffusion"
+model_dir = "diffusion_models"
 model_path = os.path.abspath(os.path.join(paths.models_path, model_dir))
 
 checkpoints_list = {}
@@ -429,7 +429,7 @@ def load_model(checkpoint_info=None, already_loaded_state_dict=None):
 
     checkpoint_info = checkpoint_info or select_checkpoint()
     if checkpoint_info is None:
-        print("\033[33mNo model loaded — place a .ckpt or .safetensors file in models/Stable-diffusion/\033[0m")
+        print("\033[33mNo model loaded — place a .ckpt or .safetensors file in models/diffusion_models/\033[0m")
         return None
 
     timer = Timer()
