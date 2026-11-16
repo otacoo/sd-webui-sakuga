@@ -106,6 +106,8 @@ models/
    └─ Anima/
 ```
 
+`Illustrious` and `Pony` are SDXL-family models and use the same SDXL loading path; the separate folders are for organization only.
+
 ### SD1 and SDXL
 
 Place SD1/SDXL checkpoints directly in `models/diffusion_models/` or in a model-family subfolder.
