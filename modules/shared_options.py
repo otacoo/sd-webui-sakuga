@@ -207,7 +207,7 @@ Anima is a text-to-image model based on NVIDIA Cosmos architecture with a Qwen3-
   <li><code>models/VAE/qwen_image_vae.safetensors</code> — the Anima VAE weights</li>
   <li><code>models/text_encoder/qwen_3_06b_base.safetensors</code> — the Qwen3-0.6B text encoder weights</li>
   <li><code>modules_forge/text_processing/tokenizer/</code> — Qwen2 tokenizer files (tokenizer_config.json, vocab.json, merges.txt)</li>
-  <li><code>modules_forge/text_processing/tokenizer_2/</code> — T5 tokenizer files (tokenizer_config.json, special_tokens_map.json, spiece.model)</li>
+  <li><code>modules_forge/text_processing/tokenizer_2/</code> — T5 tokenizer files (tokenizer_config.json, tokenizer.json, special_tokens_map.json)</li>
 </ul>
                 """
             ),

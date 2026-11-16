@@ -1,5 +1,5 @@
 @echo off
-title SD WebUI Forge - Install & Setup
+title SD WebUI Sakuga - Install ^& Setup
 
 setlocal enabledelayedexpansion
 
@@ -27,7 +27,7 @@ if not exist "%NEW_BAT%" (
 
 echo.
 echo =============================================
-echo  SD WebUI Forge - Optional Install Features
+echo  SD WebUI Sakuga - Optional Install Features
 echo =============================================
 echo.
 

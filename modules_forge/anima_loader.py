@@ -10,8 +10,8 @@ MODELS_DIR = os.path.join(paths.models_path)
 VAE_DIR = os.path.join(MODELS_DIR, "VAE")
 TE_DIR = os.path.join(MODELS_DIR, "text_encoder")
 
-TOKENIZER_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "text_processing", "tokenizer")
-TOKENIZER2_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "text_processing", "tokenizer_2")
+TOKENIZER_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "text_processing", "tokenizer")
+TOKENIZER2_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "text_processing", "tokenizer_2")
 
 ANIMA_VAE_FILENAME = "qwen_image_vae.safetensors"
 ANIMA_TE_FILENAME = "qwen_3_06b_base.safetensors"
