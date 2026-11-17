@@ -13,6 +13,7 @@ class VAEWrapper:
         self.upscale_ratio = 8
 
         self.first_stage_model = model.eval()
+        self.is_3d = getattr(getattr(model, "encoder", None), "conv1", None) is not None and model.encoder.conv1.weight.ndim == 5
 
         self.device = device or model_management.vae_device()
         offload_device = model_management.vae_offload_device()
@@ -26,8 +27,12 @@ class VAEWrapper:
             offload_device=offload_device,
         )
 
-        self.memory_used_encode = lambda shape, dtype: (1767 * shape[2] * shape[3]) * model_management.dtype_size(dtype)
-        self.memory_used_decode = lambda shape, dtype: (2178 * shape[2] * shape[3] * 64) * model_management.dtype_size(dtype)
+        if self.is_3d:
+            self.memory_used_encode = lambda shape, dtype: (400 * shape[2] * shape[3]) * model_management.dtype_size(dtype)
+            self.memory_used_decode = lambda shape, dtype: (600 * shape[2] * shape[3] * 64) * model_management.dtype_size(dtype)
+        else:
+            self.memory_used_encode = lambda shape, dtype: (1767 * shape[2] * shape[3]) * model_management.dtype_size(dtype)
+            self.memory_used_decode = lambda shape, dtype: (2178 * shape[2] * shape[3] * 64) * model_management.dtype_size(dtype)
 
     @staticmethod
     def process_input(image):
@@ -36,6 +41,16 @@ class VAEWrapper:
     @staticmethod
     def process_output(image):
         return image.add(1.0).div(2.0).clamp(0.0, 1.0)
+
+    def _encode_one(self, pixels_in):
+        if self.is_3d:
+            return self.first_stage_model.encode(pixels_in.unsqueeze(2)).squeeze(2)
+        return self.first_stage_model.encode(pixels_in)
+
+    def _decode_one(self, samples):
+        if self.is_3d:
+            return self.first_stage_model.decode(samples.unsqueeze(2)).squeeze(2)
+        return self.first_stage_model.decode(samples)
 
     def encode(self, pixel_samples):
         if pixel_samples.ndim != 4:
@@ -67,7 +82,7 @@ class VAEWrapper:
 
             for x in range(0, _samples.shape[0], batch_number):
                 pixels_in = self.process_input(_samples[x : x + batch_number]).to(self.vae_dtype).to(self.device)
-                samples[x : x + batch_number] = self.first_stage_model.encode(pixels_in).to(self.output_device).float()
+                samples[x : x + batch_number] = self._encode_one(pixels_in).to(self.output_device).float()
 
         except (model_management.OOM_EXCEPTION, torch.OutOfMemoryError):
             print("Warning: Ran out of memory when regular Anima VAE encoding, retrying with tiled VAE encoding.")
@@ -99,7 +114,7 @@ class VAEWrapper:
         model_management.load_models_gpu([self.patcher])
 
         def encode_fn(tile):
-            return self.first_stage_model.encode(self.process_input(tile).to(self.vae_dtype).to(self.device)).float()
+            return self._encode_one(self.process_input(tile).to(self.vae_dtype).to(self.device)).float()
 
         samples = tiled_scale(
             pixel_samples,
@@ -155,7 +170,7 @@ class VAEWrapper:
         model_management.load_models_gpu([self.patcher])
 
         def decode_fn(a):
-            return (self.first_stage_model.decode(a.to(self.vae_dtype).to(self.device)) + 1.0).float()
+            return (self._decode_one(a.to(self.vae_dtype).to(self.device)) + 1.0).float()
 
         output = torch.clamp(
             (

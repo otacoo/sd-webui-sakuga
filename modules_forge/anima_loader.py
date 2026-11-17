@@ -152,7 +152,6 @@ def _convert_vae_sd_5d_to_4d(sd):
 
 
 def load_anima_vae(filepath=None):
-    from modules_forge.nn.wan_vae_2d import Qwen2DVAE
     from modules_forge.nn._vae import Wan21
 
     if filepath is None:
@@ -168,16 +167,31 @@ def load_anima_vae(filepath=None):
 
     has_5d = any(v.dim() == 5 for v in vae_sd.values())
     if has_5d:
-        print("  Converting 5D (temporal) convolution weights to 4D")
-        vae_sd = _convert_vae_sd_5d_to_4d(vae_sd)
+        from modules_forge.nn.wan_vae import WanVAE
 
-    # Convert 4D gamma tensors to 3D to match model shape
-    for k, v in vae_sd.items():
-        if k.endswith('.gamma') and v.dim() == 4:
-            vae_sd[k] = v.squeeze(-1)
+        print("  Loading native 3D (temporal) VAE")
+        vae = WanVAE(
+            base_dim=96,
+            z_dim=16,
+            dim_mult=[1, 2, 4, 4],
+            num_res_blocks=2,
+            attn_scales=[],
+            temporal_downsample=[False, True, True],
+            image_channels=3,
+            conv_out_channels=3,
+            dropout=0.0,
+        )
+        load_state_dict_strict(vae, vae_sd, log_name="Anima VAE")
+    else:
+        from modules_forge.nn.wan_vae_2d import Qwen2DVAE
 
-    vae = Qwen2DVAE.from_config({})
-    load_state_dict_strict(vae, vae_sd, log_name="Anima VAE")
+        for k, v in vae_sd.items():
+            if k.endswith('.gamma') and v.dim() == 4:
+                vae_sd[k] = v.squeeze(-1)
+
+        vae = Qwen2DVAE.from_config({})
+        load_state_dict_strict(vae, vae_sd, log_name="Anima VAE")
+
     vae.latent_format = Wan21()
     vae.eval()
     for param in vae.parameters():
