@@ -38,19 +38,25 @@ class UiLoadsave:
 
         assert not self.finalized_ui
 
-        def apply_field(obj, field, condition=None, init_field=None):
+        def source_key(field, obj):
             key = f"{path}/{field}"
+            source = getattr(obj, 'custom_script_source', None)
+            if source is None:
+                source = getattr(x, 'custom_script_source', None)
+            if source is not None:
+                key = f"customscript/{source}/{key}"
+            return key
 
-            if getattr(obj, 'custom_script_source', None) is not None:
-                key = f"customscript/{obj.custom_script_source}/{key}"
+        def apply_field(obj, field, condition=None, init_field=None):
+            if isinstance(obj, gr.Accordion) and isinstance(x, InputAccordion) and field == 'value':
+                field = 'open'
+
+            key = source_key(field, obj)
 
             if getattr(obj, 'do_not_save_to_config', False):
                 return
 
             saved_value = self.ui_settings.get(key, None)
-
-            if isinstance(obj, gr.Accordion) and isinstance(x, InputAccordion) and field == 'value':
-                field = 'open'
 
             if saved_value is None:
                 self.ui_settings[key] = getattr(obj, field)
@@ -103,11 +109,19 @@ class UiLoadsave:
 
             apply_field(x, 'value', check_dropdown, getattr(x, 'init_field', None))
 
-        if type(x) == InputAccordion:
+        if isinstance(x, InputAccordion):
             if x.accordion.visible:
                 apply_field(x.accordion, 'visible')
+
+            open_key = source_key('open', x.accordion)
+            had_open = open_key in self.ui_settings
+
             apply_field(x, 'value')
             apply_field(x.accordion, 'value')
+
+            if not had_open:
+                x.accordion.open = bool(x.value)
+                self.ui_settings[open_key] = x.accordion.open
 
         def check_tab_id(tab_id):
             tab_items = list(filter(lambda e: isinstance(e, gr.TabItem), x.children))
