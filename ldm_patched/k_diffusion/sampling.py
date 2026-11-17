@@ -574,16 +574,44 @@ def sample_ddpm(model, x, sigmas, extra_args=None, callback=None, disable=None, 
     return generic_step_sampler(model, x, sigmas, extra_args, callback, disable, noise_sampler, DDPMSampler_step)
 
 
-@torch.no_grad()
-@torch.no_grad()
-def default_noise_sampler(x):
-    return lambda sigma, sigma_next: torch.randn_like(x)
+def _er_sde_is_const(model_sampling):
+    return getattr(model_sampling, "prediction_type", None) == "const"
+
+
+def _er_sde_half_log_snr(sigma, model_sampling):
+    """Return log(alpha / sigma), using the flow/const parameterization when available."""
+    if _er_sde_is_const(model_sampling):
+        return sigma.logit().neg()
+    return sigma.log().neg()
+
+
+def _er_sde_offset_first_sigma(sigmas, model_sampling, percent_offset=1e-4):
+    """Avoid an infinite log-SNR at the first sigma of a flow model."""
+    if len(sigmas) <= 1 or not _er_sde_is_const(model_sampling):
+        return sigmas
+    if sigmas[0] >= 1:
+        sigmas = sigmas.clone()
+        sigmas[0] = model_sampling.percent_to_sigma(percent_offset)
+    return sigmas
 
 
 @torch.no_grad()
 def sample_er_sde(model, x, sigmas, extra_args=None, callback=None, disable=None, s_noise=1.0, noise_sampler=None, noise_scaler=None, max_stage=3):
+    """Extended Reverse-Time SDE solver (ER-SDE-Solver-3).
+
+    Uses the flow/const sigma parameterization when the model exposes a
+    prediction type, otherwise falls back to the plain sigma parameterization.
+    """
     extra_args = {} if extra_args is None else extra_args
+
+    model_sampling = None
+    try:
+        model_sampling = model.inner_model.inner_model.forge_objects.unet.model.predictor
+    except AttributeError:
+        model_sampling = getattr(model, "predictor", None)
+
     noise_sampler = default_noise_sampler(x) if noise_sampler is None else noise_sampler
+    s_noise = s_noise * getattr(model_sampling, "noise_scale", 1.0)
     s_in = x.new_ones([x.shape[0]])
 
     def default_er_sde_noise_scaler(x):
@@ -594,6 +622,9 @@ def sample_er_sde(model, x, sigmas, extra_args=None, callback=None, disable=None
     point_indice = torch.arange(0, num_integration_points, dtype=torch.float32, device=x.device)
 
     sigmas = torch.cat([sigmas, sigmas.new_zeros([1])])
+    sigmas = _er_sde_offset_first_sigma(sigmas, model_sampling)
+    er_lambdas = _er_sde_half_log_snr(sigmas, model_sampling).neg().exp()
+
     old_denoised = None
     old_denoised_d = None
 
@@ -605,34 +636,35 @@ def sample_er_sde(model, x, sigmas, extra_args=None, callback=None, disable=None
         if sigmas[i + 1] == 0:
             x = denoised
         else:
-            sigma_s, sigma_t = sigmas[i], sigmas[i + 1]
-            lambda_s = sigma_s.log()
-            lambda_t = sigma_t.log()
-            r_sigma = sigma_t / sigma_s
-            r = noise_scaler(sigma_t) / noise_scaler(sigma_s)
+            er_lambda_s, er_lambda_t = er_lambdas[i], er_lambdas[i + 1]
+            alpha_s = sigmas[i] / er_lambda_s
+            alpha_t = sigmas[i + 1] / er_lambda_t
+            r_alpha = alpha_t / alpha_s
+            r = noise_scaler(er_lambda_t) / noise_scaler(er_lambda_s)
 
-            x = r_sigma * r * x + sigma_t * (1 - r) * denoised
+            # Stage 1: Euler
+            x = r_alpha * r * x + alpha_t * (1 - r) * denoised
 
-            if stage_used >= 2 and old_denoised is not None and sigmas[i - 1] != 0:
-                dt = lambda_t - lambda_s
+            if stage_used >= 2:
+                dt = er_lambda_t - er_lambda_s
                 lambda_step_size = -dt / num_integration_points
-                lambda_pos = lambda_t + point_indice * lambda_step_size
-                scaled_pos = noise_scaler(lambda_pos.exp())
+                lambda_pos = er_lambda_t + point_indice * lambda_step_size
+                scaled_pos = noise_scaler(lambda_pos)
 
+                # Stage 2
                 s = torch.sum(1 / scaled_pos) * lambda_step_size
-                lambda_s_prev = sigmas[i - 1].log()
-                denoised_d = (denoised - old_denoised) / (lambda_s - lambda_s_prev)
-                x = x + sigma_t * (dt + s * noise_scaler(sigma_t)) * denoised_d
+                denoised_d = (denoised - old_denoised) / (er_lambda_s - er_lambdas[i - 1])
+                x = x + alpha_t * (dt + s * noise_scaler(er_lambda_t)) * denoised_d
 
-                if stage_used >= 3 and old_denoised_d is not None and i >= 2 and sigmas[i - 2] != 0:
-                    s_u = torch.sum((lambda_pos - lambda_s) / scaled_pos) * lambda_step_size
-                    lambda_s_prev_2 = sigmas[i - 2].log()
-                    denoised_u = (denoised_d - old_denoised_d) / ((lambda_s - lambda_s_prev_2) / 2)
-                    x = x + sigma_t * ((dt ** 2) / 2 + s_u * noise_scaler(sigma_t)) * denoised_u
+                if stage_used >= 3:
+                    # Stage 3
+                    s_u = torch.sum((lambda_pos - er_lambda_s) / scaled_pos) * lambda_step_size
+                    denoised_u = (denoised_d - old_denoised_d) / ((er_lambda_s - er_lambdas[i - 2]) / 2)
+                    x = x + alpha_t * ((dt ** 2) / 2 + s_u * noise_scaler(er_lambda_t)) * denoised_u
                 old_denoised_d = denoised_d
 
             if s_noise > 0:
-                x = x + sigma_t * noise_sampler(sigmas[i], sigmas[i + 1]) * s_noise * (sigma_t ** 2 - sigma_s ** 2 * r ** 2).sqrt().nan_to_num(nan=0.0)
+                x = x + alpha_t * noise_sampler(sigmas[i], sigmas[i + 1]) * s_noise * (er_lambda_t ** 2 - er_lambda_s ** 2 * r ** 2).sqrt().nan_to_num(nan=0.0)
         old_denoised = denoised
 
     return x
