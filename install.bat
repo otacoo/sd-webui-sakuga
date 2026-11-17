@@ -32,7 +32,7 @@ echo =============================================
 echo.
 
 :: Flash Attention
-echo Install Flash Attention? (needed for some models like SD3, FLUX)
+echo Install Flash Attention? (optional; native SDPA is recommended)
 choice /c YN /n /m "[Y/N]: "
 if !errorlevel! == 1 (
     set "ARGS=!ARGS! --flash"
@@ -41,7 +41,7 @@ if !errorlevel! == 1 (
 
 :: SageAttention
 echo.
-echo Install SageAttention? (optimized attention for speed)
+echo Install SageAttention? (optional; native SDPA is recommended)
 choice /c YN /n /m "[Y/N]: "
 if !errorlevel! == 1 (
     set "ARGS=!ARGS! --sage"
@@ -101,7 +101,7 @@ echo Writing configuration to !NEW_BAT!...
     echo.
     echo set COMMANDLINE_ARGS=!ARGS!
     echo.
-    echo :: --xformers --sage --uv
+    echo :: --sage --uv
     echo :: --pin-shared-memory --cuda-malloc --cuda-stream
     echo :: --skip-python-version-check --skip-torch-cuda-test --skip-version-check --skip-prepare-environment --skip-install
     echo.

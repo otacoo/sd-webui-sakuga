@@ -88,7 +88,7 @@ def run(command, desc=None, errdesc=None, custom_env=None, live=default_command_
 
 
 def _torch_version() -> tuple[str, str]:
-    """Given `2.10.0.dev20251111+cu130` ; Return `("2.10.0", "cu130")`"""
+    """Given `2.15.0.dev20261001+cu134` ; Return `("2.15.0", "cu134")`"""
     import importlib.metadata
 
     ver = importlib.metadata.version("torch")
@@ -96,7 +96,7 @@ def _torch_version() -> tuple[str, str]:
 
     if m is None:
         print("\n\nFailed to parse PyTorch version...")
-        ver = os.environ.get("PYTORCH_VERSION", "2.9.1+cu128")
+        ver = os.environ.get("PYTORCH_VERSION", "2.15.0+cu134")
         print("Assuming: ", ver)
         print('(you can change this with `export PYTORCH_VERSION="..."`)\n\n')
         m = re.search(r"(\d+\.\d+\.\d+)(?:[^+]+)?\+(.+)", ver)
@@ -284,8 +284,8 @@ def requirements_met(requirements_file):
 
 
 def prepare_environment():
-    torch_index_url = os.environ.get("TORCH_INDEX_URL", "https://download.pytorch.org/whl/cu130")
-    torch_command = os.environ.get("TORCH_COMMAND", f"pip install torch==2.10.0+cu130 torchvision==0.25.0+cu130 --extra-index-url {torch_index_url}")
+    torch_index_url = os.environ.get("TORCH_INDEX_URL", "https://download.pytorch.org/whl/cu134")
+    torch_command = os.environ.get("TORCH_COMMAND", f"pip install torch==2.15.0+cu134 torchvision==0.29.2+cu134 --extra-index-url {torch_index_url}")
     xformers_package = os.environ.get("XFORMERS_PACKAGE", f"xformers==0.0.34 --extra-index-url {torch_index_url}")
 
     packaging_package = os.environ.get("PACKAGING_PACKAGE", "packaging==26.0")
@@ -314,11 +314,20 @@ def prepare_environment():
         run(f'"{python}" -m {torch_command}', "Installing torch and torchvision", "Couldn't install torch", live=True)
         startup_timer.record("install torch")
 
+    if not args.reinstall_torch and is_installed("torch"):
+        try:
+            torch_version, _ = _torch_version()
+            if tuple(int(part) for part in torch_version.split(".")) < (2, 15, 0):
+                print(f"\nSakuga is tuned for PyTorch 2.15.0+; found {torch_version}.")
+                print("Add --reinstall-torch to COMMANDLINE_ARGS and launch once to update.\n")
+        except Exception:
+            pass
+
     if not args.skip_torch_cuda_test:
         success, err = check_run_python("import torch; assert torch.cuda.is_available()", return_error=True)
         if not success:
             if "older driver" in str(err).lower():
-                raise SystemError("Please update your GPU driver to support cu130 ; or manually install older PyTorch")
+                raise SystemError("Please update your GPU driver to support cu134 ; or manually install older PyTorch")
             raise RuntimeError("PyTorch is not able to access CUDA")
         startup_timer.record("torch GPU test")
 

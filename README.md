@@ -29,7 +29,7 @@ It is intended for users who want a compact WebUI, fast startup, and Anima suppo
 
 - SD1 and SDXL checkpoints
 - LoRA, ControlNet, IP-Adapter, MultiDiffusion, soft inpainting, and the usual Classic extensions
-- SageAttention, FlashAttention, `fp8`, persistent LoRA patching, and in-place LoRA patching
+- Native PyTorch SDPA, including the Windows FlashAttention backend on PyTorch 2.15+, plus optional SageAttention/FlashAttention, `fp8`, persistent LoRA patching, and in-place LoRA patching
 - Sampler and scheduler selection, including `ER SDE`
 - Hires. fix CFG, MaHiRo, RescaleCFG, VAE tiling, and the other Classic optimizations
 
@@ -50,6 +50,7 @@ It is intended for users who want a compact WebUI, fast startup, and Anima suppo
 - **Python 3.11.x** — 3.11.9 recommended, or use `uv`
   - On Windows, `webui.bat` automatically looks for Python 3.11 even if another Python version comes first on `PATH`. If yours is in a non-standard location, set `PYTHON` in `webui-user.bat`.
 - An NVIDIA GPU with current CUDA drivers is strongly recommended
+- PyTorch `2.15.0+cu134` is installed by the launcher
 - Enough disk space for Python packages and model weights
 - Optional: `python -m pip install transparent-background` to enable Inspyrenet Rembg in the Transparent Background postprocessor. Lucida works without it.
 
@@ -213,8 +214,9 @@ Anima Edit is reference conditioning, not a normal img2img denoise. Select the E
 | `--theme dark` | Start with the dark theme |
 | `--uv` | Use the `uv` package manager |
 | `--uv-symlink` | Use `uv` with symlinked packages to save disk space |
-| `--flash` | Install FlashAttention |
-| `--sage` | Install SageAttention |
+| `--reinstall-torch` | Reinstall the pinned PyTorch build (use once after updating) |
+| `--flash` | Install FlashAttention (optional; native SDPA is recommended) |
+| `--sage` | Install SageAttention (optional; native SDPA is recommended) |
 | `--cuda-malloc` | Use CUDA malloc for memory allocation |
 | `--cuda-stream` | Overlap compute and data transfer |
 | `--pin-shared-memory` | Use pinned shared memory |
