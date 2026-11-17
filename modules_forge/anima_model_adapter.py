@@ -19,6 +19,7 @@ class KModel(torch.nn.Module):
         self.diffusion_model.requires_grad_(False)
 
         self.predictor = k_predictor or PredictionDiscreteFlow(shift=3.0)
+        self.is_anima = True
 
     def apply_model(self, x, t, c_concat=None, c_crossattn=None, control=None, transformer_options={}, **kwargs):
         sigma = t

@@ -32,6 +32,10 @@ def load_model_weights(model, sd):
 def load_lora_for_models(model, clip, lora, strength_model, strength_clip, filename="default"):
     model_flag = type(model.model).__name__ if model is not None else "default"
 
+    if model is not None and getattr(model.model, "is_anima", False):
+        if not ldm_patched.modules.lora.process_anima_lora(lora, len(model.model.diffusion_model.blocks)):
+            return model, clip
+
     unet_keys = ldm_patched.modules.lora.model_lora_keys_unet(model.model) if model is not None else {}
     clip_keys = ldm_patched.modules.lora.model_lora_keys_clip(clip.cond_stage_model) if clip is not None else {}
 

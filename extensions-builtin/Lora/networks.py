@@ -2,7 +2,7 @@ import os.path
 import re
 
 from ldm_patched.modules.sd import load_lora_for_models
-from ldm_patched.modules.utils import load_torch_file
+from ldm_patched.modules.utils import load_torch_file, state_dict_prefix_replace
 from modules import errors, scripts, sd_models, shared
 
 import network
@@ -64,8 +64,13 @@ def load_networks(names, te_multipliers=None, unet_multipliers=None, dyn_dims=No
         current_sd.forge_objects_after_applying_lora = None
         return
 
+    current_sd.forge_objects.unet = current_sd.forge_objects_original.unet
+    current_sd.forge_objects.clip = current_sd.forge_objects_original.clip
+
     for filename, strength_model, strength_clip in compiled_lora_targets:
         lora_sd = load_lora_state_dict(filename)
+        if any(key.startswith("lora_unet__") for key in lora_sd):
+            lora_sd = state_dict_prefix_replace(lora_sd, {"lora_unet__": "lora_unet_"})
         current_sd.forge_objects.unet, current_sd.forge_objects.clip = load_lora_for_models(
             current_sd.forge_objects.unet,
             current_sd.forge_objects.clip,

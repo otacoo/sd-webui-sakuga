@@ -198,6 +198,29 @@ class VAEWrapper:
         return output.movedim(1, -1)
 
 
+class AnimaClipWrapper:
+    """CLIP-compatible wrapper for the Anima Qwen/T5 text encoder."""
+
+    class TokDict:
+        def __init__(self, q, t):
+            self.qwen3_06b = q
+            self.t5xxl = t
+
+    def __init__(self, patcher, te, tok1, tok2):
+        self.patcher = patcher
+        self.cond_stage_model = te
+        self.tokenizer = self.TokDict(tok1, tok2)
+
+    def clone(self):
+        return AnimaClipWrapper(self.patcher.clone(), self.cond_stage_model, self.tokenizer.qwen3_06b, self.tokenizer.t5xxl)
+
+    def add_patches(self, patches, strength_patch=1.0, strength_model=1.0):
+        return self.patcher.add_patches(patches, strength_patch, strength_model)
+
+    def get_key_patches(self):
+        return self.patcher.get_key_patches()
+
+
 class AnimaEngine:
     def __init__(self, estimated_config, huggingface_components):
         self.is_inpaint = False
@@ -240,17 +263,7 @@ class AnimaEngine:
 
         vae = VAEWrapper(model=vae_model, dtype=model_management.vae_dtype())
 
-        class ClipWrapper:
-            def __init__(self, patcher, te, tok1, tok2):
-                self.patcher = patcher
-                self.cond_stage_model = te
-                class TokDict:
-                    def __init__(self, q, t):
-                        self.qwen3_06b = q
-                        self.t5xxl = t
-                self.tokenizer = TokDict(tok1, tok2)
-
-        clip_wrapper = ClipWrapper(self._clip_patcher, text_encoder, qwen_tokenizer, t5_tokenizer)
+        clip_wrapper = AnimaClipWrapper(self._clip_patcher, text_encoder, qwen_tokenizer, t5_tokenizer)
 
         self.text_processing_engine_anima = AnimaTextProcessingEngine(
             text_encoder=text_encoder,
@@ -267,7 +280,10 @@ class AnimaEngine:
 
     @torch.inference_mode()
     def get_learned_conditioning(self, prompt: list[str]):
-        model_management.load_model_gpu(self._clip_patcher)
+        clip = self.forge_objects.clip
+        model_management.load_model_gpu(clip.patcher)
+        if self.text_processing_engine_anima.text_encoder is not clip.cond_stage_model:
+            self.text_processing_engine_anima.text_encoder = clip.cond_stage_model
         return self.text_processing_engine_anima(prompt)
 
     @torch.inference_mode()

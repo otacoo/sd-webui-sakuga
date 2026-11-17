@@ -17,6 +17,60 @@ LORA_CLIP_MAP = {
     "self_attn.out_proj": "self_attn_out_proj",
 }
 
+# Anima LoRAs may be trained on a transformer with more blocks than the
+# loaded model.  Neo remaps the block indices instead of dropping the LoRA.
+ANIMA_BLOCK_MAPPINGS = {
+    (28, 40): [0, 1, 1, 2, 3, 3, 4, 5, 5, 6, 7, 7, 8, 9, 9, 10, 11, 11, 12, 13, 14, 14, 15, 16, 16, 17, 18, 18, 19, 20, 20, 21, 22, 22, 23, 24, 24, 25, 26, 27],
+    (28, 52): [0, 1, 1, 1, 2, 3, 3, 3, 4, 5, 5, 5, 6, 7, 7, 7, 8, 9, 9, 9, 10, 11, 11, 11, 12, 13, 14, 14, 14, 15, 16, 16, 16, 17, 18, 18, 18, 19, 20, 20, 20, 21, 22, 22, 22, 23, 24, 24, 24, 25, 26, 27],
+    (40, 52): [0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12, 13, 14, 14, 15, 16, 17, 17, 18, 19, 20, 20, 21, 22, 23, 23, 24, 25, 26, 26, 27, 28, 29, 29, 30, 31, 32, 32, 33, 34, 35, 35, 36, 37, 38, 39],
+}
+
+
+def process_anima_lora(lora, blocks):
+    """Relocate LLM-adapter keys and remap Anima block indices."""
+    keys = list(lora.keys())
+
+    for k in keys:
+        if k.startswith("diffusion_model.llm_adapter"):
+            lora[k.replace("diffusion_model.llm_adapter", "text_encoders.llm_adapter")] = lora.pop(k)
+        elif k.startswith("lora_unet_llm_adapter"):
+            lora[k.replace("lora_unet_llm_adapter", "lora_te_llm_adapter")] = lora.pop(k)
+
+    parsed = {}
+    prefix, sep = ("lora_unet_blocks_", "_") if any(k.startswith("lora_unet_blocks_") for k in keys) else ("diffusion_model.blocks.", ".")
+
+    for k in keys:
+        if not k.startswith(prefix):
+            continue
+        num, s, tail = k[len(prefix) :].partition(sep)
+        if s and num.isdigit():
+            parsed[k] = (int(num), tail)
+
+    lora_blocks = (max(n for n, _ in parsed.values()) + 1) if parsed else 0
+    lora_blocks = next((size for size in (28, 40, 52) if lora_blocks <= size), 0)
+
+    if lora_blocks == blocks or lora_blocks == 0:
+        return True
+    if lora_blocks > blocks:
+        print(f"[LORA] Cannot map larger Anima LoRA ({lora_blocks}) to model ({blocks})")
+        return False
+
+    mapping = ANIMA_BLOCK_MAPPINGS.get((lora_blocks, blocks))
+    if mapping is None:
+        print(f"[LORA] No Anima block mapping for {lora_blocks} -> {blocks}")
+        return False
+
+    reverse = {}
+    for target, source in enumerate(mapping):
+        reverse.setdefault(source, []).append(target)
+
+    temp = lora.copy()
+    for k, (source, tail) in parsed.items():
+        for target in reverse.get(source, []):
+            lora[f"{prefix}{target}{sep}{tail}"] = temp[k].clone()
+
+    return True
+
 
 def load_lora(lora, to_load):
     patch_dict = {}
@@ -221,6 +275,17 @@ def model_lora_keys_clip(model, key_map={}):
         if k.endswith(".weight"):
             key_map["text_encoders.{}".format(k[: -len(".weight")])] = k  # generic lora format without any weird key names
 
+    # Anima text encoder: Qwen3-0.6B layers and the LLM adapter.
+    for k in sdk:
+        if not k.endswith(".weight"):
+            continue
+        if k.startswith("model.layers."):
+            key = k[len("model.layers.") : -len(".weight")].replace(".", "_")
+            key_map["lora_te_layers_{}".format(key)] = k
+        elif k.startswith("llm_adapter."):
+            key = k[len("llm_adapter.") : -len(".weight")].replace(".", "_")
+            key_map["lora_te_llm_adapter_{}".format(key)] = k
+
     text_model_lora_key = "lora_te_text_model_encoder_layers_{}_{}"
     clip_l_present = False
 
@@ -277,7 +342,14 @@ def model_lora_keys_unet(model, key_map={}):
             else:
                 key_map["{}".format(k)] = k  # generic lora format for not .weight without any weird key names
 
-    diffusers_keys = ldm_patched.modules.utils.unet_to_diffusers(model.model_config.unet_config)
+    # Anima/KModel does not expose a classic UNet config.  Its LoRA keys use
+    # the generic diffusion_model.* / lora_unet_* mapping above, so the
+    # diffusers conversion is only needed for legacy UNets.
+    unet_config = getattr(getattr(model, "model_config", None), "unet_config", None)
+    if unet_config is None:
+        return key_map
+
+    diffusers_keys = ldm_patched.modules.utils.unet_to_diffusers(unet_config)
     for k in diffusers_keys:
         if k.endswith(".weight"):
             unet_key = "diffusion_model.{}".format(diffusers_keys[k])
