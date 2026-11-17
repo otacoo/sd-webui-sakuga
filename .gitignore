@@ -28,7 +28,6 @@ __pycache__
 /user.css
 /venv
 /.venv
-/webui-user.bat
 /webui-user.sh
 /start-webui.bat
 notification.mp3

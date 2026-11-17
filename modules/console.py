@@ -88,22 +88,22 @@ def banner():
     line = style("-" * 58, "dim")
     print()
     print(line)
-    print(f"  {style('SAKUGA', 'cyan', 'bold')}  {style('Stable Diffusion WebUI', 'dim')}")
+    print(f" {style('SAKUGA', 'cyan', 'bold')}  {style('Stable Diffusion WebUI', 'dim')}")
     print(line)
 
 
 def section(title):
     print()
-    print(f"  {style('>', 'cyan', 'bold')} {style(title, 'bold')}")
+    print(f"  {style('>', 'cyan', 'bold')} {style(f'{title}:', 'bold')}")
 
 
-def kv(label, value, width=10):
-    label = str(label)
+def kv(label, value, width=11, indent=2):
+    label = f"{label}:"
     padding = " " * max(1, width - len(label))
-    print(f"  {style(label, 'dim')}{padding}{value}")
+    print(f"{' ' * indent}{style(label, 'dim')}{padding}{value}")
 
 
-def detail(label, value, width=18):
+def detail(label, value, width=11):
     kv(label, style(value, "dim"), width=width)
 
 
@@ -114,22 +114,23 @@ def path(value):
 def command(args):
     if args:
         print(f"    {style(' '.join(args), 'dim')}")
+    print()
 
 
 def ok(message):
-    print(f"  {style('ok', 'green', 'bold')}  {message}")
+    print(f"  {style('OK:', 'green', 'bold')} {message}")
 
 
 def hint(message):
-    print(f"  {style('hint', 'yellow')}  {message}")
+    print(f"  {style('Hint:', 'yellow', 'bold')} {message}")
 
 
 def warn(message):
-    print(f"  {style('!', 'yellow', 'bold')} {style(message, 'yellow')}")
+    print(f"  {style('Warning:', 'yellow', 'bold')} {message}")
 
 
 def error(message):
-    print(f"  {style('x', 'red', 'bold')} {style(message, 'red')}")
+    print(f"  {style('Error:', 'red', 'bold')} {message}")
 
 
 def ready(summary, local_url=None, share_url=None):
@@ -140,11 +141,11 @@ def ready(summary, local_url=None, share_url=None):
     print(line)
     print(f"  {style('Ready', 'green', 'bold')} in {style(total, 'bold')}")
     if details:
-        print(f"  {style(details.rstrip(')'), 'dim')}")
+        print(f"  {style('Timings:', 'dim')} {style(details.rstrip(')'), 'dim')}")
     if local_url:
-        label = style(f"{'Local':<7}", "dim")
-        print(f"  {label}{style(local_url, 'cyan', 'underline')}")
+        print()
+        print(f"  {style('Running on local URL:', 'dim')}  {style(local_url.rstrip('/'), 'cyan', 'underline')}")
     if share_url:
-        label = style(f"{'Public':<7}", "dim")
-        print(f"  {label}{style(share_url, 'cyan', 'underline')}")
+        print(f"  {style('Public URL:', 'dim')}  {style(share_url, 'cyan', 'underline')}")
     print(line)
+    print()

@@ -11,6 +11,12 @@ from PIL import Image
 upscale_cache = {}
 
 
+def _single_value(value, default=None):
+    if isinstance(value, (list, tuple)):
+        return value[0] if value else default
+    return value
+
+
 class ScriptPostprocessingUpscale(scripts_postprocessing.ScriptPostprocessing):
     name = "Upscale"
     order = 1000
@@ -112,7 +118,8 @@ class ScriptPostprocessingUpscale(scripts_postprocessing.ScriptPostprocessing):
         tab_scale_to.select(fn=lambda: 1, outputs=[selected_tab])
 
         def on_selected_upscale_method(upscale_method: str):
-            if not (match := re.search(r"(\d)[xX]|[xX](\d)", upscale_method)):
+            upscale_method = _single_value(upscale_method) or ""
+            if not (match := re.search(r"(\d)[xX]|[xX](\d)", str(upscale_method))):
                 return gr.skip()
 
             return gr.update(value=int(match.group(1) or match.group(2)))
@@ -235,6 +242,9 @@ class ScriptPostprocessingUpscale(scripts_postprocessing.ScriptPostprocessing):
         upscaler_2_name=None,
         upscaler_2_visibility=0.0,
     ):
+        upscaler_1_name = _single_value(upscaler_1_name, "None")
+        upscaler_2_name = _single_value(upscaler_2_name, "None")
+
         if upscaler_1_name == "None":
             return
 

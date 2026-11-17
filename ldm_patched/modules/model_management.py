@@ -157,9 +157,9 @@ def get_total_memory(dev=None, torch_total_too=False):
 total_vram = get_total_memory(get_torch_device()) / (1024 * 1024)
 total_ram = psutil.virtual_memory().total / (1024 * 1024)
 if cpu_state is CPUState.CPU:
-    console.kv("Memory", f"{round(total_ram / 1024)} GB RAM")
+    console.kv("Memory", f"GPU: N/A | System: {round(total_ram / 1024)} GB RAM", width=7)
 else:
-    console.kv("Memory", f"{round(total_vram / 1024)} GB VRAM  |  {round(total_ram / 1024)} GB RAM")
+    console.kv("Memory", f"GPU: {round(total_vram / 1024)} GB VRAM | System: {round(total_ram / 1024)} GB RAM", width=7)
 
 if not args.always_normal_vram and not args.always_cpu:
     if total_vram <= 4096:
@@ -576,7 +576,8 @@ def load_models_gpu(models, memory_required=0):
 
             console.detail(
                 "Memory",
-                f"free {current_free_mem / (2**20):.0f} MB  |  model {model_memory / (2**20):.0f} MB  |  reserve {minimal_inference_memory / (2**20):.0f} MB  |  left {estimated_remaining_memory / (2**20):.0f} MB",
+                f"free {current_free_mem / (2**20):.0f} MB | model {model_memory / (2**20):.0f} MB | reserve {minimal_inference_memory / (2**20):.0f} MB | left {estimated_remaining_memory / (2**20):.0f} MB",
+                width=7,
             )
 
             if estimated_remaining_memory < 0:

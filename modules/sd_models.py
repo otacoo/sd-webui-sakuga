@@ -191,7 +191,14 @@ def list_models():
 re_strip_checksum = re.compile(r"\s*\[[^]]+]\s*$")
 
 
+def _single_value(value):
+    if isinstance(value, (list, tuple)):
+        return value[0] if value else None
+    return value
+
+
 def get_closet_checkpoint_match(search_string):
+    search_string = _single_value(search_string)
     if not search_string:
         return None
 
@@ -217,7 +224,7 @@ model_hash = hashes.partial_hash_from_cache
 
 def select_checkpoint():
     """Returns the CheckpointInfo for the selected model, or None if no checkpoints are found."""
-    model_checkpoint = shared.opts.sd_model_checkpoint
+    model_checkpoint = _single_value(shared.opts.sd_model_checkpoint)
 
     checkpoint_info = checkpoint_aliases.get(model_checkpoint, None)
     if checkpoint_info is not None:

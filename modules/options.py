@@ -223,6 +223,14 @@ class Options:
         if isinstance(self.data.get("ui_reorder"), str) and self.data.get("ui_reorder") and "ui_reorder_list" not in self.data:
             self.data["ui_reorder_list"] = [i.strip() for i in self.data.get("ui_reorder").split(",")]
 
+        # UI state extensions can save an empty list for a single-select
+        # setting. Normalize those back to a scalar before anything reads them.
+        for k, v in list(self.data.items()):
+            info = self.data_labels.get(k)
+            if info is None or isinstance(info.default, list) or not isinstance(v, list):
+                continue
+            self.data[k] = v[0] if v else info.default
+
         bad_settings = 0
         for k, v in self.data.items():
             info = self.data_labels.get(k, None)

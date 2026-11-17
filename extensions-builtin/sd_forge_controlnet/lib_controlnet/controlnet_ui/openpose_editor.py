@@ -97,7 +97,9 @@ class OpenposeEditor:
         )
 
         def update_upload_link(model: str) -> dict:
-            return gr.update(visible=("openpose" in model.lower()))
+            if isinstance(model, (list, tuple)):
+                model = model[0] if model else ""
+            return gr.update(visible=("openpose" in str(model).lower()))
 
         model.change(fn=update_upload_link, inputs=[model], outputs=[self.upload_link])
 

@@ -81,6 +81,8 @@ def get_all_preprocessor_tags() -> list[str]:
 
 
 def get_preprocessor(name: str):
+    if isinstance(name, (list, tuple)):
+        name = name[0] if name else "None"
     return supported_preprocessors[name]
 
 

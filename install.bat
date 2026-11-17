@@ -3,27 +3,8 @@ title SD WebUI Sakuga - Install ^& Setup
 
 setlocal enabledelayedexpansion
 
-set "BAT_FILE=%~dp0webui-user.bat"
 set "NEW_BAT=%~dp0start-webui.bat"
 set "ARGS=--theme dark"
-
-:: Rename webui-user.bat to start-webui.bat if not already done
-if not exist "%NEW_BAT%" (
-    if exist "%BAT_FILE%" (
-        echo.
-        echo Rename webui-user.bat to start-webui.bat?
-        choice /c YN /n /m "[Y/N]: "
-        if !errorlevel! == 1 (
-            move "%BAT_FILE%" "%NEW_BAT%" >nul
-            echo Renamed to start-webui.bat
-        ) else (
-            set "NEW_BAT=%BAT_FILE%"
-        )
-    ) else (
-        echo Creating start-webui.bat...
-        copy "%~dp0webui.bat" "%NEW_BAT%" >nul 2>nul
-    )
-)
 
 echo.
 echo =============================================

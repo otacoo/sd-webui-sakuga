@@ -2,6 +2,8 @@ if __name__ == "__main__":
     raise NotImplementedError("Do not run webui.py directly!")
 
 
+import contextlib
+import io
 import os
 import time
 
@@ -80,22 +82,32 @@ def webui_worker():
             elif shared.opts.auto_launch_browser == "Local":
                 auto_launch_browser = not cmd_opts.webui_is_non_local
 
-        app, local_url, share_url = shared.demo.launch(
-            share=cmd_opts.share,
-            server_name=initialize_util.gradio_server_name(),
-            server_port=cmd_opts.port,
-            ssl_keyfile=cmd_opts.tls_keyfile,
-            ssl_certfile=cmd_opts.tls_certfile,
-            ssl_verify=cmd_opts.disable_tls_verify,
-            debug=cmd_opts.gradio_debug,
-            auth=gradio_auth_creds,
-            inbrowser=auto_launch_browser,
-            prevent_thread_lock=True,
-            quiet=True,
-            allowed_paths=cmd_opts.gradio_allowed_path,
-            app_kwargs={"docs_url": "/docs", "redoc_url": "/redoc"},
-            root_path=f"/{cmd_opts.subpath}" if cmd_opts.subpath else "",
-        )
+        launch_output = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(launch_output):
+                app, local_url, share_url = shared.demo.launch(
+                    share=cmd_opts.share,
+                    server_name=initialize_util.gradio_server_name(),
+                    server_port=cmd_opts.port,
+                    ssl_keyfile=cmd_opts.tls_keyfile,
+                    ssl_certfile=cmd_opts.tls_certfile,
+                    ssl_verify=cmd_opts.disable_tls_verify,
+                    debug=cmd_opts.gradio_debug,
+                    auth=gradio_auth_creds,
+                    inbrowser=auto_launch_browser,
+                    prevent_thread_lock=True,
+                    quiet=True,
+                    allowed_paths=cmd_opts.gradio_allowed_path,
+                    app_kwargs={"docs_url": "/docs", "redoc_url": "/redoc"},
+                    root_path=f"/{cmd_opts.subpath}" if cmd_opts.subpath else "",
+                )
+        except Exception:
+            print(launch_output.getvalue(), end="")
+            raise
+
+        for line in launch_output.getvalue().splitlines():
+            if line.strip() and "Running on local URL" not in line and "Running on public URL" not in line:
+                print(line)
 
         startup_timer.record("gradio launch")
 

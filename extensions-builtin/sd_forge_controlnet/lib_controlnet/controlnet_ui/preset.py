@@ -100,6 +100,8 @@ class ControlNetPresetUI:
         """Interactions with the main ControlNet tab"""
 
         def apply_preset(name: str, *ui_states) -> tuple[dict]:
+            if isinstance(name, (list, tuple)):
+                name = name[0] if name else NEW_PRESET
             assert name in (*self.presets, NEW_PRESET)
             if name == NEW_PRESET:
                 return (gr.skip(),) * (len(ControlNetUnit.infotext_fields()) + 1)

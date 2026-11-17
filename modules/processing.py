@@ -267,6 +267,11 @@ class StableDiffusionProcessing:
         if self.sampler_index is not None:
             print("sampler_index argument for StableDiffusionProcessing does not do anything; use sampler_name", file=sys.stderr)
 
+        for field_name in ("sampler_name", "scheduler"):
+            value = getattr(self, field_name)
+            if isinstance(value, (list, tuple)):
+                setattr(self, field_name, value[0] if value else None)
+
         self.comments = {}
 
         if self.styles is None:
@@ -1132,6 +1137,11 @@ class StableDiffusionProcessingTxt2Img(StableDiffusionProcessing):
     """attribute signifying that this is processed by the Upscale button"""
 
     def __post_init__(self):
+        for field_name in ("hr_upscaler", "hr_checkpoint_name", "hr_sampler_name", "hr_scheduler"):
+            value = getattr(self, field_name)
+            if isinstance(value, (list, tuple)):
+                setattr(self, field_name, value[0] if value else None)
+
         super().__post_init__()
 
         if self.firstphase_width != 0 or self.firstphase_height != 0:
