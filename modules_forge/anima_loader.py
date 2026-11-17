@@ -211,7 +211,7 @@ def load_anima_transformer(state_dict):
     from modules_forge.nn.anima import Anima as CosmosAnima
 
     sd = strip_state_dict_prefix(state_dict)
-    config = detect_anima_config_from_state_dict(state_dict)
+    config = detect_anima_config_from_state_dict(sd)
 
     print(f"Building Anima transformer: {config['model_channels']}ch, {config['num_blocks']} blocks, {config['crossattn_emb_channels']} crossattn")
     transformer = CosmosAnima(
