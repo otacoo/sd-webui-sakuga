@@ -6,6 +6,7 @@ https://github.com/comfyanonymous/ComfyUI
 - Edited by. Haoming02
 """
 
+import os
 import time
 from enum import Enum
 from functools import lru_cache
@@ -82,6 +83,19 @@ except Exception:
 if args.always_cpu:
     cpu_state = CPUState.CPU
 
+try:
+    cuda_available = torch.cuda.is_available()
+except Exception:
+    cuda_available = False
+
+if cpu_state is CPUState.GPU and not directml_enabled and not xpu_available and not cuda_available:
+    if os.environ.get("SAKUGA_TORCH_CPU_FALLBACK") != "1":
+        if torch.version.cuda is None:
+            console.warn("PyTorch is a CPU-only build; running on CPU")
+        else:
+            console.warn("CUDA is unavailable; running on CPU")
+    cpu_state = CPUState.CPU
+
 
 def is_intel_xpu():
     global cpu_state
@@ -142,7 +156,10 @@ def get_total_memory(dev=None, torch_total_too=False):
 
 total_vram = get_total_memory(get_torch_device()) / (1024 * 1024)
 total_ram = psutil.virtual_memory().total / (1024 * 1024)
-console.kv("Memory", f"{round(total_vram / 1024)} GB VRAM  |  {round(total_ram / 1024)} GB RAM")
+if cpu_state is CPUState.CPU:
+    console.kv("Memory", f"{round(total_ram / 1024)} GB RAM")
+else:
+    console.kv("Memory", f"{round(total_vram / 1024)} GB VRAM  |  {round(total_ram / 1024)} GB RAM")
 
 if not args.always_normal_vram and not args.always_cpu:
     if total_vram <= 4096:

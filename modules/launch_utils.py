@@ -31,6 +31,11 @@ default_command_live = os.environ.get("WEBUI_LAUNCH_LIVE_OUTPUT") == "1"
 
 os.environ.setdefault("GRADIO_ANALYTICS_ENABLED", "False")
 
+TORCH_VERSION = "2.15.0"
+TORCHVISION_VERSION = "0.29.2"
+TORCH_CUDA_VERSION = "cu134"
+TORCH_INDEX_URL = f"https://download.pytorch.org/whl/{TORCH_CUDA_VERSION}"
+
 
 def check_python_version():
     major = sys.version_info.major
@@ -96,7 +101,7 @@ def _torch_version() -> tuple[str, str]:
 
     if m is None:
         print("\n\nFailed to parse PyTorch version...")
-        ver = os.environ.get("PYTORCH_VERSION", "2.15.0+cu134")
+        ver = os.environ.get("PYTORCH_VERSION", f"{TORCH_VERSION}+{TORCH_CUDA_VERSION}")
         print("Assuming: ", ver)
         print('(you can change this with `export PYTORCH_VERSION="..."`)\n\n')
         m = re.search(r"(\d+\.\d+\.\d+)(?:[^+]+)?\+(.+)", ver)
@@ -136,6 +141,41 @@ def check_run_python(code: str, *, return_error: bool = False) -> bool | tuple[b
         return result.returncode == 0, result.stderr
     else:
         return result.returncode == 0
+
+
+def torch_built_with_cuda() -> bool:
+    success, _ = check_run_python("import torch; assert torch.version.cuda is not None", return_error=True)
+    return success
+
+
+def print_torch_cuda_hint():
+    os.environ["SAKUGA_TORCH_CPU_FALLBACK"] = "1"
+    console.warn("PyTorch is a CPU-only build; generation will run on the CPU")
+    console.hint(
+        "for NVIDIA acceleration, reinstall: "
+        f"python -m pip install --force-reinstall torch=={TORCH_VERSION}+{TORCH_CUDA_VERSION} "
+        f"torchvision=={TORCHVISION_VERSION}+{TORCH_CUDA_VERSION} "
+        f"--index-url {TORCH_INDEX_URL}"
+    )
+
+
+def pin_torch_for_installers():
+    # Extension installers can resolve an unpinned torch dependency from PyPI
+    # and replace the CUDA build with a CPU wheel, so pin the working versions.
+    try:
+        import importlib.metadata
+
+        torch_version = importlib.metadata.version("torch")
+        torchvision_version = importlib.metadata.version("torchvision")
+    except Exception:
+        return
+
+    constraints_path = os.path.join(script_path, "tmp", "torch-constraints.txt")
+    os.makedirs(os.path.dirname(constraints_path), exist_ok=True)
+    with open(constraints_path, "w", encoding="utf8") as file:
+        file.write(f"torch=={torch_version}\ntorchvision=={torchvision_version}\n")
+
+    os.environ["PIP_CONSTRAINT"] = constraints_path
 
 
 def git_fix_workspace(*args, **kwargs):
@@ -284,8 +324,13 @@ def requirements_met(requirements_file):
 
 
 def prepare_environment():
-    torch_index_url = os.environ.get("TORCH_INDEX_URL", "https://download.pytorch.org/whl/cu134")
-    torch_command = os.environ.get("TORCH_COMMAND", f"pip install torch==2.15.0+cu134 torchvision==0.29.2+cu134 --extra-index-url {torch_index_url}")
+    torch_index_url = os.environ.get("TORCH_INDEX_URL", TORCH_INDEX_URL)
+    torch_command = os.environ.get(
+        "TORCH_COMMAND",
+        f"pip install torch=={TORCH_VERSION}+{TORCH_CUDA_VERSION} "
+        f"torchvision=={TORCHVISION_VERSION}+{TORCH_CUDA_VERSION} "
+        f"--extra-index-url {torch_index_url}",
+    )
     xformers_package = os.environ.get("XFORMERS_PACKAGE", f"xformers==0.0.34 --extra-index-url {torch_index_url}")
 
     packaging_package = os.environ.get("PACKAGING_PACKAGE", "packaging==26.0")
@@ -315,12 +360,18 @@ def prepare_environment():
         run(f'"{python}" -m {torch_command}', "Installing torch and torchvision", "Couldn't install torch", live=True)
         startup_timer.record("install torch")
 
+    torch_cuda_build = False
+
     if is_installed("torch"):
         try:
             torch_version, cuda_version = _torch_version()
             console.kv("PyTorch", f"{torch_version}+{cuda_version}" if cuda_version else torch_version)
         except Exception:
             pass
+
+        torch_cuda_build = torch_built_with_cuda()
+        if not torch_cuda_build:
+            print_torch_cuda_hint()
 
     if not args.reinstall_torch and is_installed("torch"):
         try:
@@ -331,13 +382,15 @@ def prepare_environment():
         except Exception:
             pass
 
-    if not args.skip_torch_cuda_test:
+    if not args.skip_torch_cuda_test and torch_cuda_build:
         success, err = check_run_python("import torch; assert torch.cuda.is_available()", return_error=True)
         if not success:
             if "older driver" in str(err).lower():
                 raise SystemError("Please update your GPU driver to support cu134 ; or manually install older PyTorch")
             raise RuntimeError("PyTorch is not able to access CUDA")
         startup_timer.record("torch GPU test")
+
+    pin_torch_for_installers()
 
     if not is_installed("packaging"):
         run_pip(f"install {packaging_package}", "packaging")
@@ -429,6 +482,10 @@ def prepare_environment():
     if not requirements_met(requirements_file):
         run_pip(f'install -r "{requirements_file}"', "requirements")
         startup_timer.record("enforce requirements")
+
+    if torch_cuda_build and not torch_built_with_cuda():
+        console.warn("an extension installer replaced the CUDA PyTorch build")
+        print_torch_cuda_hint()
 
     if "--exit" in sys.argv:
         print("Exiting because of --exit argument")
