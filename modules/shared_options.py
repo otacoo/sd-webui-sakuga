@@ -154,6 +154,7 @@ options_templates.update(
             "disable_mmap_load_safetensors": OptionInfo(False, "Disable memmapping when loading .safetensors").info("fix slow loading speed in certain cases"),
             "dump_stacks_on_signal": OptionInfo(False, "Print the stack trace before terminating the webui via Ctrl + C"),
             "no_flashbang": OptionInfo(False, 'Force the background color of the "Reloading..." screen to be black'),
+            "sakuga_enable_unload_models": OptionInfo(True, "Enable the model list/unload links in the footer").needs_reload_ui(),
         },
     )
 )
@@ -421,6 +422,9 @@ options_templates.update(
             "send_seed": OptionInfo(True, 'Send the Seed information when using the "Send to" buttons'),
             "send_cfg": OptionInfo(True, 'Send the CFG information when using the "Send to" buttons'),
             "send_size": OptionInfo(True, 'Send the Resolution information when using the "Send to" buttons'),
+            "sakuga_enable_enqueue": OptionInfo(True, "Enable the Enqueue button").info("queue the current prompt to run after the current generation finishes").needs_reload_ui(),
+            "sakuga_enqueue_notifications": OptionInfo(True, "Show Enqueue notifications").needs_reload_ui(),
+            "sakuga_enqueue_placement": OptionInfo("left", "Enqueue button placement", gr.Radio, {"choices": ("left", "middle", "right")}).needs_reload_ui(),
         },
     )
 )
@@ -524,6 +528,7 @@ options_templates.update(
         {
             "postprocessing_enable_in_main_ui": OptionInfo([], "Enable Postprocessing operations in txt2img and img2img", ui_components.DropdownMulti, lambda: {"choices": [x.name for x in shared_items.postprocessing_scripts()]}),
             "postprocessing_operation_order": OptionInfo([], "Order of Postprocessing operations", ui_components.DropdownMulti, lambda: {"choices": [x.name for x in shared_items.postprocessing_scripts()]}),
+            "sakuga_enable_transparent_background": OptionInfo(True, "Enable Transparent Background in the Extras tab").info("adds an accordion to remove image backgrounds"),
         },
     )
 )

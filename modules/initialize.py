@@ -125,6 +125,10 @@ def initialize_rest(*, reload_script_modules=False):
     with startup_timer.subcategory("load scripts"):
         scripts.load_scripts()
 
+    from modules import sakuga_extras
+
+    sakuga_extras.register()
+
     if reload_script_modules:
         for module in [module for name, module in sys.modules.items() if name.startswith("modules.ui")]:
             importlib.reload(module)

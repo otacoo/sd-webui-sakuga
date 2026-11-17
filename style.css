@@ -331,7 +331,7 @@ input[type="checkbox"].input-accordion-checkbox {
     background: #b4c0cc;
 }
 
-.gradio-button.generate-box-skip:hover, .gradio-button.generate-box-interrupt:hover, .gradio-button.generate-box-interrupting:hover {
+.gradio-button.generate-box-skip:hover, .gradio-button.generate-box-interrupt:hover, .gradio-button.generate-box-interrupting:hover, .gradio-button.generate-box-enqueue:hover {
     background: #c2cfdb;
 }
 

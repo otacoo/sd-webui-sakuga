@@ -47,6 +47,10 @@ It is intended for users who want a compact WebUI, fast startup, and Anima suppo
 - Compact prompt layout with the scheduler visible by default
 - `reilnuud/polite` Gradio theme and larger gallery/preview layout
 - Optional **Hide Styles** setting
+- Native **Enqueue** button for queueing prompts during generation, with placement and notification settings
+- Native **List all models** / **Unload Models** footer links
+- Native **Transparent Background** postprocessing in Extras (Lucida; optional Inspyrenet Rembg)
+- Drag-over top tabs to open a tab while dragging files
 - Live previews in the full-page image viewer
 - Windows `install.bat`, `start-webui.bat`, and `update.bat` helpers
 
@@ -58,6 +62,7 @@ It is intended for users who want a compact WebUI, fast startup, and Anima suppo
   - On Windows, `webui.bat` automatically looks for Python 3.11 even if another Python version comes first on `PATH`. If yours is in a non-standard location, set `PYTHON` in `webui-user.bat`.
 - An NVIDIA GPU with current CUDA drivers is strongly recommended
 - Enough disk space for Python packages and model weights
+- Optional: `python -m pip install transparent-background` to enable Inspyrenet Rembg in the Transparent Background postprocessor. Lucida works without it.
 
 ## Installation
 
