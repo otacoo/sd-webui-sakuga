@@ -1,5 +1,6 @@
 import collections
 import gc
+import json
 import os.path
 import re
 import sys
@@ -131,6 +132,19 @@ def checkpoint_tiles(use_short=False):
     return [x.short_title if use_short else x.title for x in checkpoints_list.values()]
 
 
+def register_anima_diffusers(path):
+    index_path = os.path.join(path, "model_index.json")
+    if not os.path.isfile(index_path):
+        return
+    try:
+        with open(index_path, "r") as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return
+    if data.get("_class_name") == "AnimaPipeline":
+        CheckpointInfo(path).register()
+
+
 def list_models():
     checkpoints_list.clear()
     checkpoint_aliases.clear()
@@ -139,41 +153,20 @@ def list_models():
 
     model_list = modelloader.load_models(model_path=model_path, command_path=shared.cmd_opts.ckpt_dir, ext_filter=[".ckpt", ".safetensors"], ext_blacklist=[".vae.ckpt", ".vae.safetensors"])
 
-    # Scan for Anima diffusers directories
-    import json
-    for scan_path in [model_path]:
-        if not os.path.isdir(scan_path):
-            continue
+    # Scan Anima diffusers directories one level below the model root
+    if os.path.isdir(model_path):
         try:
-            for entry in os.scandir(scan_path):
-                if entry.is_dir():
-                    index_path = os.path.join(entry.path, "model_index.json")
-                    if os.path.isfile(index_path):
-                        try:
-                            with open(index_path, "r") as f:
-                                data = json.load(f)
-                            if data.get("_class_name") == "AnimaPipeline":
-                                checkpoint_info = CheckpointInfo(entry.path)
-                                checkpoint_info.register()
-                        except (json.JSONDecodeError, KeyError, PermissionError):
-                            pass
-                    # Also check subdirectories one level deep for diffusers format
-                    try:
-                        for subentry in os.scandir(entry.path):
-                            if subentry.is_dir():
-                                subindex_path = os.path.join(subentry.path, "model_index.json")
-                                if os.path.isfile(subindex_path):
-                                    try:
-                                        with open(subindex_path, "r") as f:
-                                            data = json.load(f)
-                                        if data.get("_class_name") == "AnimaPipeline":
-                                            checkpoint_info = CheckpointInfo(subentry.path)
-                                            checkpoint_info.register()
-                                    except (json.JSONDecodeError, KeyError, PermissionError):
-                                        pass
-                    except PermissionError:
-                        pass
-        except PermissionError:
+            for entry in os.scandir(model_path):
+                if not entry.is_dir():
+                    continue
+                register_anima_diffusers(entry.path)
+                try:
+                    for subentry in os.scandir(entry.path):
+                        if subentry.is_dir():
+                            register_anima_diffusers(subentry.path)
+                except OSError:
+                    pass
+        except OSError:
             pass
 
     if os.path.exists(cmd_ckpt):
@@ -373,7 +366,7 @@ class SdModelData:
                     return self.sd_model
 
                 try:
-                    result = load_model()
+                    load_model()
 
                 except Exception as e:
                     print("", file=sys.stderr)
