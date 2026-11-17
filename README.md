@@ -245,7 +245,7 @@ chmod +x webui.sh webui-user.sh
 - **Anima VAE not found** — check for `models/VAE/qwen_image_vae.safetensors`.
 - **Anima text encoder not found** — check for `models/text_encoders/qwen_3_06b_base.safetensors`.
 - **Anima Hires. fix runs out of VAE memory** — Sakuga automatically retries with tiled VAE encoding. If it still runs out of memory, lower **Settings → VAE → Tile Size for Tiled VAE** (for example, to `256`) or enable the **Never OOM** VAE option.
-- **Anima-Base produces blobs or very soft images** — Base is the unrefined model and needs a normal 30-50 step run with CFG 4-6, quality tags, and an anime/illustration-style prompt. It is not intended for photorealism. Test at 1024x1024 without Hires. fix first; if it still fails, try `--no-half` to rule out FP16 instability.
+- **Anima-Base produces blobs or very soft images** — Base is the unrefined model and needs a normal 30-50 step run with CFG 4-6, quality tags, and an anime/illustration-style prompt. It is not intended for photorealism. Test at 1024x1024 without Hires. fix first. Anima now selects BF16 automatically on supported GPUs; if you force FP16 with `--unet-in-fp16` or use an older GPU, Base may collapse to a constant latent. Use `--unet-in-bf16` or `--no-half` to rule that out.
 - **Tokenizer errors** — make sure `modules_forge/text_processing/tokenizer/` and `tokenizer_2/` have not been deleted. Restore them with `git checkout -- modules_forge/text_processing`.
 - **Installer asks about renaming `webui-user.bat`** — accept if you want the installer to generate a clean `start-webui.bat`; the original `webui-user.bat` is kept in Git history if you need it back.
 
