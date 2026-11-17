@@ -148,6 +148,18 @@ def torch_built_with_cuda() -> bool:
     return success
 
 
+def torch_cuda_status() -> tuple[bool, bool, str]:
+    code = "import torch; has_cuda = torch.version.cuda is not None; print(int(has_cuda), int(has_cuda and torch.cuda.is_available()))"
+    result = subprocess.run([python, "-c", code], capture_output=True, text=True, shell=False)
+    if result.returncode != 0:
+        return False, False, result.stderr
+    try:
+        has_cuda, available = result.stdout.split()
+    except ValueError:
+        return False, False, result.stderr
+    return has_cuda == "1", available == "1", result.stderr
+
+
 def print_torch_cuda_hint():
     os.environ["SAKUGA_TORCH_CPU_FALLBACK"] = "1"
     console.warn("PyTorch is a CPU-only build; generation will run on the CPU")
@@ -361,6 +373,9 @@ def prepare_environment():
         startup_timer.record("install torch")
 
     torch_cuda_build = False
+    torch_cuda_available = False
+    torch_version = None
+    cuda_version = None
 
     if is_installed("torch"):
         try:
@@ -369,7 +384,7 @@ def prepare_environment():
         except Exception:
             pass
 
-        torch_cuda_build = torch_built_with_cuda()
+        torch_cuda_build, torch_cuda_available, cuda_error = torch_cuda_status()
         if not torch_cuda_build:
             print_torch_cuda_hint()
 
@@ -383,9 +398,8 @@ def prepare_environment():
             pass
 
     if not args.skip_torch_cuda_test and torch_cuda_build:
-        success, err = check_run_python("import torch; assert torch.cuda.is_available()", return_error=True)
-        if not success:
-            if "older driver" in str(err).lower():
+        if not torch_cuda_available:
+            if "older driver" in str(cuda_error).lower():
                 raise SystemError("Please update your GPU driver to support cu134 ; or manually install older PyTorch")
             raise RuntimeError("PyTorch is not able to access CUDA")
         startup_timer.record("torch GPU test")
@@ -483,9 +497,15 @@ def prepare_environment():
         run_pip(f'install -r "{requirements_file}"', "requirements")
         startup_timer.record("enforce requirements")
 
-    if torch_cuda_build and not torch_built_with_cuda():
-        console.warn("an extension installer replaced the CUDA PyTorch build")
-        print_torch_cuda_hint()
+    if torch_cuda_build:
+        try:
+            _, final_cuda_version = _torch_version()
+        except Exception:
+            final_cuda_version = None
+
+        if cuda_version is not None and final_cuda_version != cuda_version:
+            console.warn("an extension installer replaced the CUDA PyTorch build")
+            print_torch_cuda_hint()
 
     if "--exit" in sys.argv:
         print("Exiting because of --exit argument")
