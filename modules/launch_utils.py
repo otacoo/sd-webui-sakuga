@@ -27,7 +27,7 @@ git = os.environ.get("GIT", "git")
 index_url = os.environ.get("INDEX_URL")
 dir_repos = "repositories"
 
-default_command_live = os.environ.get("WEBUI_LAUNCH_LIVE_OUTPUT") == "1"
+default_command_live = os.environ.get("WEBUI_LAUNCH_LIVE_OUTPUT") == "1" or sys.stdout.isatty()
 
 os.environ.setdefault("GRADIO_ANALYTICS_ENABLED", "False")
 
