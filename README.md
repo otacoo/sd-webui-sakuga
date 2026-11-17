@@ -1,15 +1,19 @@
 <h1 align="center">Stable Diffusion WebUI Sakuga</h1>
 
 <p align="center">
-  <b>A standalone, experimental fork of Forge Classic with native Anima support.</b>
+  <b>An experimental fork of <a href="https://github.com/Haoming02/sd-webui-forge-classic">Haoming02's Forge Classic</a> with native Anima support.</b>
 </p>
 
 > [!WARNING]
-> Anima support is experimental and under active development. Expect breaking changes and rough edges. Sakuga is an independent fork and is not affiliated with or endorsed by the upstream Forge projects. Please report Sakuga issues to this repository, not to the upstream projects.
+> Anima support is experimental and under active development. Expect breaking changes and rough edges. Sakuga is a fork of Haoming02's Forge Classic and is not affiliated with or endorsed by the upstream Forge projects. Please report Sakuga issues to this repository, not to the upstream projects.
+
+## Fork lineage
+
+Sakuga is forked from [Haoming02/sd-webui-forge-classic](https://github.com/Haoming02/sd-webui-forge-classic). Development tracks upstream changes from that repository; the Sakuga repository is [otacoo/sd-webui-sakuga](https://github.com/otacoo/sd-webui-sakuga).
 
 ## What is Sakuga?
 
-Sakuga is a focused Stable Diffusion WebUI built on the **Forge Classic** codebase. It keeps the lightweight SD1/SDXL workflow of Classic and adds native support for **Anima**, a text-to-image model based on the NVIDIA Cosmos architecture with a Qwen3-0.6B text encoder.
+Sakuga is a focused Stable Diffusion WebUI forked from **Haoming02's Forge Classic**. It keeps the lightweight SD1/SDXL workflow of Classic and adds native support for **Anima**, a text-to-image model based on the NVIDIA Cosmos architecture with a Qwen3-0.6B text encoder.
 
 Current architectures: **SD1**, **SDXL**, and **Anima**. Other model families are not supported.
 

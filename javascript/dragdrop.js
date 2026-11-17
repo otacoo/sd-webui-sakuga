@@ -56,6 +56,54 @@ function eventHasFiles(e) {
     return false;
 }
 
+function eventHasDragData(e) {
+    return !!e.dataTransfer && !!e.dataTransfer.types && e.dataTransfer.types.length > 0;
+}
+
+function getTopTabButton(target) {
+    const tabs = gradioApp().getElementById('tabs');
+    if (!tabs) return null;
+
+    const nav = tabs.querySelector(':scope > .tab-nav');
+    if (!nav) return null;
+
+    const button = target instanceof Element ? target.closest('button') : null;
+    return button && button.parentElement === nav ? button : null;
+}
+
+let dragHoverTab = null;
+let dragHoverAt = 0;
+
+// While dragging, hovering a top-level tab opens it so the dragged item can be
+// dropped into that tab's content. Inner Gradio tabs are deliberately ignored.
+window.document.addEventListener('dragover', e => {
+    if (!eventHasDragData(e)) return;
+
+    const button = getTopTabButton(e.composedPath()[0]);
+    if (!button || button.classList.contains('selected')) return;
+
+    e.preventDefault();
+
+    const now = Date.now();
+    if (button === dragHoverTab && now - dragHoverAt < 150) return;
+    dragHoverTab = button;
+    dragHoverAt = now;
+
+    window.requestAnimationFrame(() => {
+        if (button.isConnected && !button.classList.contains('selected')) {
+            button.click();
+        }
+    });
+});
+
+window.document.addEventListener('dragend', () => {
+    dragHoverTab = null;
+});
+
+window.document.addEventListener('drop', () => {
+    dragHoverTab = null;
+});
+
 function dragDropTargetIsPrompt(target) {
     if (target?.placeholder && target?.placeholder.indexOf("Prompt") >= 0) return true;
     if (target?.parentNode?.parentNode?.className?.indexOf("prompt") > 0) return true;
