@@ -32,34 +32,16 @@ class Toprow:
 
     submit_box = None
 
-    def __init__(self, is_img2img, is_compact=False, id_part=None):
+    def __init__(self, is_img2img, id_part=None):
         if id_part is None:
             id_part = "img2img" if is_img2img else "txt2img"
 
         self.id_part = id_part
         self.is_img2img = is_img2img
-        self.is_compact = is_compact
 
-        if not is_compact:
-            with gr.Row(elem_id=f"{id_part}_toprow", variant="compact"):
-                self.create_classic_toprow()
-        else:
-            self.create_submit_box()
-
-    def create_classic_toprow(self):
-        self.create_prompts()
-
-        with gr.Column(scale=1, elem_id=f"{self.id_part}_actions_column"):
-            self.create_submit_box()
-
-            self.create_tools_row()
-
-            self.create_styles_ui()
+        self.create_submit_box()
 
     def create_inline_toprow_prompts(self):
-        if not self.is_compact:
-            return
-
         self.create_prompts()
 
         with gr.Row(elem_classes=["toprow-compact-stylerow"]):
@@ -69,13 +51,10 @@ class Toprow:
                 self.create_styles_ui()
 
     def create_inline_toprow_image(self):
-        if not self.is_compact:
-            return
-
         self.submit_box.render()
 
     def create_prompts(self):
-        with gr.Column(elem_id=f"{self.id_part}_prompt_container", elem_classes=["prompt-container-compact"] if self.is_compact else [], scale=6):
+        with gr.Column(elem_id=f"{self.id_part}_prompt_container", elem_classes=["prompt-container-compact"], scale=6):
             with gr.Row(elem_id=f"{self.id_part}_prompt_row", elem_classes=["prompt-row"]):
                 self.prompt = gr.Textbox(label="Prompt", elem_id=f"{self.id_part}_prompt", show_label=False, lines=3, placeholder="Prompt\n(Ctrl+Enter to Generate ; Alt+Enter to Skip ; Esc to Interrupt)", elem_classes=["prompt"])
                 self.prompt_img = gr.File(label="", elem_id=f"{self.id_part}_prompt_image", file_count="single", type="binary", visible=False)
@@ -91,7 +70,7 @@ class Toprow:
         )
 
     def create_submit_box(self):
-        with gr.Row(elem_id=f"{self.id_part}_generate_box", elem_classes=["generate-box"] + (["generate-box-compact"] if self.is_compact else []), render=not self.is_compact) as submit_box:
+        with gr.Row(elem_id=f"{self.id_part}_generate_box", elem_classes=["generate-box", "generate-box-compact"], render=False) as submit_box:
             self.submit_box = submit_box
 
             self.interrupt = gr.Button("Interrupt", elem_id=f"{self.id_part}_interrupt", elem_classes="generate-box-interrupt", tooltip="End batch after current generation finishes" if shared.opts.interrupt_after_current else "End current generation immediately")

@@ -57,7 +57,6 @@ options_templates.update(
             "grid_text_inactive_color": OptionInfo("#999999", "Inactive Text Color for image grids", ui_components.FormColorPicker, {}),
             "grid_background_color": OptionInfo("#ffffff", "Background Color for image grids", ui_components.FormColorPicker, {}),
             "save_init_img": OptionInfo(False, "Save a copy of the init image before img2img"),
-            "save_images_before_face_restoration": OptionInfo(False, "Save a copy of the image before face restoration"),
             "save_images_before_highres_fix": OptionInfo(False, "Save a copy of the image before Hires. fix"),
             "save_images_before_color_correction": OptionInfo(False, "Save a copy of the image before color correction"),
             "save_mask": OptionInfo(False, "For inpainting, save a copy of the greyscale mask"),
@@ -122,18 +121,6 @@ options_templates.update(
             "upscaler_for_img2img": OptionInfo("None", "Upscaler for img2img", gr.Dropdown, lambda: {"choices": [x.name for x in shared.sd_upscalers]}).info("for resizing the input image if the image resolution is smaller than the generation resolution"),
             "upscaling_max_images_in_cache": OptionInfo(4, "Number of upscaled images to cache", gr.Slider, {"minimum": 0, "maximum": 8, "step": 1}),
             "prefer_fp16_upscalers": OptionInfo(False, "Prefer to load Upscaler in half precision").info("increase speed; reduce quality; will try <b>fp16</b>, then <b>bf16</b>, then fall back to <b>fp32</b> if not supported").needs_restart(),
-        },
-    )
-)
-
-options_templates.update(
-    options_section(
-        ("face-restoration", "Face Restoration", "postprocessing"),
-        {
-            "face_restoration": OptionInfo(False, "Restore Faces", infotext="Face restoration").info("after each generation, process the face(s) with a 3rd-party model"),
-            "face_restoration_model": OptionInfo("CodeFormer", "Face Restoration Model", gr.Radio, lambda: {"choices": [x.name() for x in shared.face_restorers]}),
-            "code_former_weight": OptionInfo(0.5, "CodeFormer Strength", gr.Slider, {"minimum": 0, "maximum": 1, "step": 0.05}).info("0 = max effect; 1 = min effect"),
-            "face_restoration_unload": OptionInfo(False, "Move the model to CPU after restoration"),
         },
     )
 )
@@ -394,8 +381,6 @@ options_templates.update(
             "show_mahiro": OptionInfo(False, "Display the MaHiRo Toggle").info('see <a href="https://huggingface.co/spaces/yoinked/blue-arxiv">blue-arxiv</a> - <b>id:</b> <ins>2024-1208.1</ins>').needs_reload_ui(),
             "hide_styles": OptionInfo(False, "Hide the Styles feature.").needs_reload_ui(),
             "paste_safe_guard": OptionInfo(False, 'Disable the "Read generation parameters" button (↙️) when negative prompt is not empty'),
-            "div_classic": OptionDiv(),
-            "compact_prompt_box": OptionInfo(True, "Compact Prompt Layout").info("put prompts inside the Generate tab, leaving more space for the gallery").needs_reload_ui(),
             "dimensions_and_batch_together": OptionInfo(True, "Show Width/Height and Batch sliders in same row").needs_reload_ui(),
             "sd_checkpoint_dropdown_use_short": OptionInfo(False, "Show filenames without folder in the Checkpoint dropdown").info("if disabled, models under subdirectories will be listed like sdxl/anime.safetensors"),
             "hires_fix_show_sampler": OptionInfo(True, "[Hires. fix]: Show checkpoint, sampler, scheduler, and cfg options").needs_reload_ui(),
@@ -424,7 +409,7 @@ options_templates.update(
             "send_size": OptionInfo(True, 'Send the Resolution information when using the "Send to" buttons'),
             "sakuga_enable_enqueue": OptionInfo(True, "Enable the Enqueue button").info("queue the current prompt to run after the current generation finishes").needs_reload_ui(),
             "sakuga_enqueue_notifications": OptionInfo(True, "Show Enqueue notifications").needs_reload_ui(),
-            "sakuga_enqueue_placement": OptionInfo("left", "Enqueue button placement", gr.Radio, {"choices": ("left", "middle", "right")}).needs_reload_ui(),
+            "sakuga_enqueue_placement": OptionInfo("right", "Enqueue button placement", gr.Radio, {"choices": ("left", "middle", "right")}).needs_reload_ui(),
         },
     )
 )

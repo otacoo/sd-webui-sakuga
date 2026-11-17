@@ -191,7 +191,7 @@ def connect_paste_params_buttons():
 
         if binding.source_tabname is not None and fields is not None:
             paste_field_names = [
-                *["Prompt", "Negative prompt", "Steps", "Face restoration"],
+                *["Prompt", "Negative prompt", "Steps"],
                 *(["Seed"] if shared.opts.send_seed else []),
                 *(["CFG scale"] if shared.opts.send_cfg else []),
                 *binding.paste_field_names,

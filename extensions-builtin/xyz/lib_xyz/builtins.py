@@ -3,7 +3,6 @@ from modules import sd_models, sd_samplers, sd_schedulers, sd_vae, shared
 from .axis_application import (
     apply_checkpoint,
     apply_clip_skip,
-    apply_face_restore,
     apply_field,
     apply_order,
     apply_override,
@@ -57,7 +56,6 @@ if shared.cmd_opts.adv_xyz:
             AxisOption("Extra noise", float, apply_override("img2img_extra_noise")),
             AxisOptionImg2Img("Image CFG Scale", float, apply_field("image_cfg_scale")),
             AxisOptionImg2Img("Cond. Image Mask Weight", float, apply_field("inpainting_mask_weight")),
-            AxisOption("Face restore", str, apply_face_restore, format_value=format_value),
             AxisOption("SkipEarly", float, apply_field("skip_early_cond")),
             AxisOption("NGMS", float, apply_field("s_min_uncond")),
             AxisOption("Token merging ratio", float, apply_override("token_merging_ratio")),

@@ -19,7 +19,7 @@ def gradio_server_name():
 def fix_torch_version():
     import torch
 
-    # Truncate version number of nightly/local build of PyTorch to not cause exceptions with CodeFormer or Safetensors
+    # Truncate version number of nightly/local build of PyTorch to not cause exceptions with Safetensors
     if ".dev" in torch.__version__ or "+git" in torch.__version__:
         torch.__long_version__ = torch.__version__
         torch.__version__ = re.search(r'[\d.]+[\d]', torch.__version__).group(0)

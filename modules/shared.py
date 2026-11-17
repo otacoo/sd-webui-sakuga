@@ -45,7 +45,6 @@ prompt_styles = None
 
 interrogator = None
 
-face_restorers = []
 
 options_templates = None
 opts = None

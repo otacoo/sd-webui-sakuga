@@ -72,20 +72,9 @@ def initialize():
     initialize_util.configure_sigint_handler()
     initialize_util.configure_opts_onchange()
 
-    from modules.shared_cmd_options import cmd_opts
-
     from modules import sd_models
     sd_models.setup_model()
     startup_timer.record("setup SD model")
-
-    from modules import codeformer_model
-    warnings.filterwarnings(action="ignore", category=UserWarning, module="torchvision.transforms.functional_tensor")
-    codeformer_model.setup_model(cmd_opts.codeformer_models_path)
-    startup_timer.record("setup codeformer")
-
-    from modules import gfpgan_model
-    gfpgan_model.setup_model(cmd_opts.gfpgan_models_path)
-    startup_timer.record("setup gfpgan")
 
     initialize_rest(reload_script_modules=False)
 

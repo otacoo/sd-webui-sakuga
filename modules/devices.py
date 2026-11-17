@@ -50,7 +50,7 @@ def enable_tf32():
 cpu: torch.device = torch.device("cpu")
 fp8: bool = model_management.unet_dtype() == torch.float8_e4m3fn
 device: torch.device = model_management.get_torch_device()
-device_gfpgan = device_esrgan = device_codeformer = device
+device_esrgan = device
 dtype: torch.dtype = torch.float32 if model_management.unet_dtype() is torch.float32 else torch.float16
 dtype_vae: torch.dtype = model_management.vae_dtype()
 dtype_unet: torch.dtype = model_management.unet_dtype()

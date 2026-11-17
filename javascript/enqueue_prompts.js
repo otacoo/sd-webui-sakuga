@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
     if (typeof opts !== 'undefined' && opts.sakuga_enable_enqueue === false) return;
 
     var isProcessing = false;
@@ -108,7 +108,6 @@
             sampler_name:       getVal('sampling')           || '',
             sampler_index:      getVal('sampling')           || '',
             scheduler:          getVal('scheduler')          || 'Automatic',
-            restore_faces:      getVal('restore_faces')      || false,
             tiling:             getVal('tiling')             || false,
             denoising_strength: parseFloat(getVal('denoising_strength')) || 0.75,
         };
@@ -119,7 +118,7 @@
         var fields = [
             'prompt', 'neg_prompt', 'steps', 'cfg_scale', 'width', 'height',
             'batch_size', 'batch_count', 'seed', 'sampling', 'scheduler',
-            'restore_faces', 'tiling', 'denoising_strength'
+            'tiling', 'denoising_strength'
         ];
         for (var i = 0; i < fields.length; i++) {
             var id = fields[i];
@@ -229,7 +228,7 @@
         btn.title = 'Queue current prompt to run after the current generation finishes';
         btn.textContent = 'Enqueue';
 
-        var p = opt('sakuga_enqueue_placement', 'left');
+        var p = opt('sakuga_enqueue_placement', 'right');
         var il = p === 'left' ? '0' : p === 'middle' ? '33.33%' : '66.66%';
         var ir = p === 'left' ? '0.5rem 0 0 0.5rem' :
                  p === 'right' ? '0 0.5rem 0.5rem 0' : '0';
@@ -282,7 +281,7 @@
                 slotMap.interrupt = actualInterrupt;
                 slotMap.skip = skipVisible ? skipBtn : null;
 
-                var slots = orderFor(opt('sakuga_enqueue_placement', 'left')).slice();
+                var slots = orderFor(opt('sakuga_enqueue_placement', 'right')).slice();
                 if (!skipVisible) {
                     slots = slots.filter(function (id) { return id !== 'skip'; });
                 }

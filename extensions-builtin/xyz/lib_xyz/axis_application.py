@@ -71,20 +71,6 @@ def apply_styles(p: StableDiffusionProcessing, x: str, _):
     p.styles.extend(x.split(","))
 
 
-def apply_face_restore(p, opt, x):
-    opt = opt.lower()
-    if opt == "codeformer":
-        is_active = True
-        p.face_restoration_model = "CodeFormer"
-    elif opt == "gfpgan":
-        is_active = True
-        p.face_restoration_model = "GFPGAN"
-    else:
-        is_active = opt in ("true", "yes", "y", "1")
-
-    p.restore_faces = is_active
-
-
 def apply_override(field, boolean: bool = False):
     def fun(p, x, xs):
         if boolean:
