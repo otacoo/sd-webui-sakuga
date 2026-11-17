@@ -4,7 +4,6 @@ import os
 import sys
 import warnings
 
-from modules import console
 from modules.timer import startup_timer
 
 
@@ -103,7 +102,6 @@ def initialize_rest(*, reload_script_modules=False):
     from modules import shared, upscaler, scripts
     if cmd_opts.ui_debug_mode:
         shared.sd_upscalers = upscaler.UpscalerLanczos().scalers
-        console.section("Extensions")
         scripts.load_scripts()
         return
 
@@ -116,7 +114,6 @@ def initialize_rest(*, reload_script_modules=False):
     startup_timer.record("list localizations")
 
     with startup_timer.subcategory("load scripts"):
-        console.section("Extensions")
         scripts.load_scripts()
 
     from modules import sakuga_extras

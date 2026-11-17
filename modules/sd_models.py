@@ -318,7 +318,7 @@ def read_state_dict(checkpoint_file, print_global_state=False, map_location=None
         pl_sd = torch.load(checkpoint_file, map_location=map_location or shared.weight_load_location)
 
     if print_global_state and "global_step" in pl_sd:
-        console.kv("Global step", pl_sd["global_step"])
+        print(f"Global Step: {pl_sd['global_step']}")
 
     sd = get_state_dict_from_checkpoint(pl_sd)
     return sd
@@ -330,13 +330,12 @@ def get_checkpoint_state_dict(checkpoint_info: CheckpointInfo, timer):
 
     if checkpoint_info in checkpoints_loaded:
         # use checkpoint cache
-        console.kv("Checkpoint", f"{os.path.basename(checkpoint_info.filename)}  [{sd_model_hash}]  cached")
+        print(f"Loading weights [{sd_model_hash}] from cache")
         # move to end as latest
         checkpoints_loaded.move_to_end(checkpoint_info)
         return checkpoints_loaded[checkpoint_info]
 
-    console.kv("Checkpoint", f"{os.path.basename(checkpoint_info.filename)}  [{sd_model_hash}]")
-    console.path(checkpoint_info.filename)
+    print(f"Loading weights [{sd_model_hash}] from {checkpoint_info.filename}")
     res = read_state_dict(checkpoint_info.filename)
     timer.record("load weights from disk")
 
@@ -438,8 +437,6 @@ def load_model(checkpoint_info=None, already_loaded_state_dict=None):
 
     timer = Timer()
 
-    console.section("Model")
-
     if model_data.sd_model is not None:
         if model_data.sd_model.filename == checkpoint_info.filename:
             return model_data.sd_model
@@ -515,7 +512,7 @@ def load_model(checkpoint_info=None, already_loaded_state_dict=None):
 
     timer.record("calculate empty prompt")
 
-    console.kv("Model loaded", timer.summary())
+    print(f"Model loaded in {timer.summary()}.")
 
     gc.collect()
     return sd_model

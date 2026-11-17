@@ -11,7 +11,7 @@ from ldm_patched.modules import model_detection, model_management
 from ldm_patched.modules.model_base import ModelType, model_sampling
 from ldm_patched.modules.model_patcher import ModelPatcher
 from ldm_patched.modules.sd import CLIP, VAE, load_model_weights
-from modules import console, sd_hijack, shared
+from modules import sd_hijack, shared
 from modules.sd_models_config import find_checkpoint_config
 from modules.sd_models_types import WebuiSdModel
 from modules_forge import forge_clip
@@ -244,7 +244,7 @@ def load_checkpoint_guess_config(sd, output_vae=True, output_clip=True, output_c
 @torch.no_grad()
 def load_model_for_a1111(timer, checkpoint_info=None, state_dict=None) -> WebuiSdModel:
     if is_anima_checkpoint(checkpoint_info) or is_anima_state_dict(state_dict):
-        console.kv("Engine", "Anima")
+        print("[Forge] Detected Anima model, using Anima engine")
         return load_anima_engine(checkpoint_info, state_dict)
 
     ztsnr = False

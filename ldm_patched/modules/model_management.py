@@ -528,7 +528,7 @@ def load_models_gpu(models, memory_required=0):
             del load_model
         else:
             if hasattr(x, "model"):
-                console.kv("Loading", x.model.__class__.__name__)
+                print(f"Loading Model: {x.model.__class__.__name__}")
             models_to_load.append(load_model)
 
     if len(models_to_load) == 0:
@@ -538,11 +538,11 @@ def load_models_gpu(models, memory_required=0):
                 free_memory(extra_mem, d, models_already_loaded)
 
         if (moving_time := time.perf_counter() - execution_start_time) > 0.1:
-            console.detail("Cleanup", f"{moving_time:.2f}s")
+            print(f"Memory cleanup has taken {moving_time:.2f} seconds")
 
         return
 
-    console.detail("Models", f"{len(models_to_load)} to load")
+    print(f"Begin to load {len(models_to_load)} model{'s' if len(models_to_load) > 1 else ''}")
 
     total_memory_required = {}
     for loaded_model in models_to_load:
@@ -574,11 +574,10 @@ def load_models_gpu(models, memory_required=0):
             minimal_inference_memory = minimum_inference_memory()
             estimated_remaining_memory = current_free_mem - model_memory - minimal_inference_memory
 
-            console.detail(
-                "Memory",
-                f"free {current_free_mem / (2**20):.0f} MB | model {model_memory / (2**20):.0f} MB | reserve {minimal_inference_memory / (2**20):.0f} MB | left {estimated_remaining_memory / (2**20):.0f} MB",
-                width=7,
-            )
+            print("[Memory Management] Current Free GPU Memory (MB) = ", current_free_mem / (2**20))
+            print("[Memory Management] Model Memory (MB) = ", model_memory / (2**20))
+            print("[Memory Management] Minimal Inference Memory (MB) = ", minimal_inference_memory / (2**20))
+            print("[Memory Management] Estimated Remaining GPU Memory (MB) = ", estimated_remaining_memory / (2**20))
 
             if estimated_remaining_memory < 0:
                 vram_set_state = VRAMState.LOW_VRAM
@@ -592,7 +591,7 @@ def load_models_gpu(models, memory_required=0):
         current_loaded_models.insert(0, loaded_model)
 
     moving_time = time.perf_counter() - execution_start_time
-    console.detail("Moved", f"{moving_time:.2f}s")
+    print(f"Moving model(s) has taken {moving_time:.2f} seconds")
 
 
 def load_model_gpu(model):

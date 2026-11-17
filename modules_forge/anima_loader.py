@@ -3,7 +3,7 @@ import json
 import torch
 import safetensors.torch
 
-from modules import console, paths
+from modules import paths
 
 
 MODELS_DIR = os.path.abspath(paths.models_path)
@@ -120,7 +120,7 @@ def load_state_dict_strict(model, sd, log_name=None, ignore_start=None):
             model_sd[k].copy_(sd[k])
             loaded += 1
         elif k in model_sd:
-            console.warn(f"{log_name} size mismatch {k}: checkpoint {tuple(sd[k].shape)} vs model {tuple(model_sd[k].shape)}")
+            print(f"  {log_name} size mismatch {k}: checkpoint {tuple(sd[k].shape)} vs model {tuple(model_sd[k].shape)}")
             mismatched += 1
     if isinstance(ignore_start, str):
         missing = [x for x in missing if not x.startswith(ignore_start)]
@@ -128,21 +128,11 @@ def load_state_dict_strict(model, sd, log_name=None, ignore_start=None):
     elif ignore_start:
         missing = [x for x in missing if x not in ignore_start]
         unexpected = [x for x in unexpected if x not in ignore_start]
-    summary = f"{loaded} tensors"
-    extras = []
-    if mismatched:
-        extras.append(f"{mismatched} mismatched")
-    if len(missing):
-        extras.append(f"{len(missing)} not in file")
-    if len(unexpected):
-        extras.append(f"{len(unexpected)} unexpected")
-    if extras:
-        summary += "  " + console.style(f"({', '.join(extras)})", "dim")
-    console.kv(log_name, summary, width=18)
+    print(f"  {log_name}: loaded {loaded} keys, {mismatched} mismatched, {len(missing)} missing, {len(unexpected)} unexpected")
     if mismatched > 0:
-        console.warn(f"size mismatches in {log_name}")
+        print(f"    !! SIZE MISMATCHES in {log_name}")
     if len(unexpected) > 0:
-        console.warn(f"unexpected keys in {log_name}: {unexpected[:5]}{'...' if len(unexpected) > 5 else ''}")
+        print(f"    !! UNEXPECTED keys in {log_name}: {unexpected[:5]}{'...' if len(unexpected) > 5 else ''}")
 
 
 def _convert_vae_sd_5d_to_4d(sd):
@@ -172,8 +162,7 @@ def load_anima_vae(filepath=None):
             f"Please place the Anima VAE weights file in the VAE models folder."
         )
 
-    console.kv("VAE file", os.path.basename(filepath))
-    console.path(filepath)
+    print(f"Loading Anima VAE: {filepath}")
     vae_sd = _load_safetensors_sd(filepath)
 
     has_5d = any(v.dim() == 5 for v in vae_sd.values())
@@ -185,7 +174,7 @@ def load_anima_vae(filepath=None):
         image_channels = encoder_conv.shape[1] if encoder_conv is not None and encoder_conv.dim() == 5 else 3
         conv_out_channels = decoder_conv.shape[0] if decoder_conv is not None and decoder_conv.dim() == 5 else 3
 
-        console.kv("VAE format", f"native 3D ({image_channels}ch in / {conv_out_channels}ch out)")
+        print(f"  Loading native 3D (temporal) VAE ({image_channels}ch in / {conv_out_channels}ch out)")
         vae = WanVAE(
             base_dim=96,
             z_dim=16,
@@ -226,8 +215,7 @@ def load_anima_text_encoder(filepath=None):
             f"Please place the Qwen3-0.6B text encoder weights file in the text_encoders models folder."
         )
 
-    console.kv("Text encoder", os.path.basename(filepath))
-    console.path(filepath)
+    print(f"Loading Anima Text Encoder: {filepath}")
     te_sd = _load_safetensors_sd(filepath)
 
     text_encoder = Qwen3_06B({})
@@ -244,7 +232,7 @@ def load_anima_transformer(state_dict):
     sd = strip_state_dict_prefix(state_dict)
     config = detect_anima_config_from_state_dict(sd)
 
-    console.kv("Anima transformer", f"{config['model_channels']}ch, {config['num_blocks']} blocks, {config['crossattn_emb_channels']} crossattn")
+    print(f"Building Anima transformer: {config['model_channels']}ch, {config['num_blocks']} blocks, {config['crossattn_emb_channels']} crossattn")
     transformer = CosmosAnima(
         max_img_h=1024,
         max_img_w=1024,
