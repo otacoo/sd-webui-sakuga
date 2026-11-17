@@ -9,6 +9,70 @@ from torch import nn
 from . import sampling, utils
 
 
+class ForgeScheduleLinker(nn.Module):
+    """Adapter between the Forge model predictor and the k-diffusion samplers.
+
+    The samplers only use this object to translate between sigmas and model
+    timesteps.  The actual denoising call still goes through CFGDenoiser, so
+    this can wrap either a flow predictor (Anima) or a classic model_sampling
+    object (SD1/SDXL).
+    """
+
+    def __init__(self, predictor, inner_model=None):
+        super().__init__()
+        self.predictor = predictor
+        self.inner_model = inner_model
+
+    @property
+    def sigmas(self):
+        return self.predictor.sigmas
+
+    @property
+    def log_sigmas(self):
+        return self.sigmas.log()
+
+    @property
+    def sigma_min(self):
+        return self.predictor.sigma_min
+
+    @property
+    def sigma_max(self):
+        return self.predictor.sigma_max
+
+    def get_sigmas(self, n=None):
+        sigmas = self.sigmas.flip(0)
+        if n is None:
+            return sampling.append_zero(sigmas)
+
+        # Interpolate the sigma table directly.  Calling predictor.sigma(t)
+        # with an index in [0, len(sigmas)-1] is not valid for discrete flow
+        # predictors, whose timestep domain is [0, 1] rather than [0, 999].
+        t = torch.linspace(0, len(sigmas) - 1, n, device=sigmas.device)
+        low_idx = t.floor().long()
+        high_idx = t.ceil().long()
+        w = t.frac()
+        log_sigmas = sigmas.log()
+        out = torch.exp((1 - w) * log_sigmas[low_idx] + w * log_sigmas[high_idx])
+        return sampling.append_zero(out)
+
+    def sigma_to_t(self, sigma, quantize=None):
+        return self.predictor.timestep(sigma)
+
+    def t_to_sigma(self, t):
+        return self.predictor.sigma(t)
+
+    def noise_scaling(self, sigma, noise, latent_image, max_denoise=False):
+        if hasattr(self.predictor, "noise_scaling"):
+            return self.predictor.noise_scaling(sigma, noise, latent_image, max_denoise=max_denoise)
+
+        sigma = sigma.view(sigma.shape[:1] + (1,) * (noise.ndim - 1))
+        if max_denoise:
+            noise = noise * torch.sqrt(1.0 + sigma**2.0)
+        else:
+            noise = noise * sigma
+        return noise + latent_image
+
+
 class VDenoiser(nn.Module):
     """A v-diffusion-pytorch model wrapper for k-diffusion"""
 

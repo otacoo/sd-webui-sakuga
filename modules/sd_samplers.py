@@ -7,7 +7,6 @@ if TYPE_CHECKING:
 
 from modules import (
     sd_samplers_kdiffusion,
-    sd_samplers_lcm,
     sd_samplers_timesteps,
     sd_schedulers,
     shared,
@@ -21,7 +20,6 @@ from modules_forge import forge_alter_samplers
 all_samplers = [
     *sd_samplers_kdiffusion.samplers_data_k_diffusion,
     *sd_samplers_timesteps.samplers_data_timesteps,
-    *sd_samplers_lcm.samplers_data_lcm,
     *forge_alter_samplers.samplers_data_alter,
 ]
 all_samplers_map = {x.name: x for x in all_samplers}

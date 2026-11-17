@@ -1,6 +1,7 @@
 import inspect
 
 import k_diffusion
+import k_diffusion.external
 import torch
 
 import modules.shared as shared
@@ -20,12 +21,15 @@ samplers_k_diffusion = [
     ("DPM++ SDE", "sample_dpmpp_sde", ["k_dpmpp_sde"], {"scheduler": "karras", "second_order": True, "brownian_noise": True}),
     ("DPM++ 2M SDE", "sample_dpmpp_2m_sde", ["k_dpmpp_2m_sde_ka"], {"scheduler": "exponential", "brownian_noise": True}),
     ("DPM++ 3M SDE", "sample_dpmpp_3m_sde", ["k_dpmpp_3m_sde"], {"scheduler": "exponential", "discard_next_to_last_sigma": True, "brownian_noise": True}),
+    ("DPM++ 2s a", "sample_dpmpp_2s_ancestral", ["dpmpp_2s_a", "dpmpp_2s_a_rf"], {}),
     ("Euler a", "sample_euler_ancestral", ["k_euler_a", "k_euler_ancestral"], {"uses_ensd": True}),
-    ("ER SDE", "sample_er_sde", ["er_sde"], {}),
     ("Euler", "sample_euler", ["k_euler"], {}),
+    ("ER SDE", "sample_er_sde", ["er_sde"], {}),
+    ("LCM", "sample_lcm", ["k_lcm"], {}),
     ("LMS", "sample_lms", ["k_lms"], {}),
     ("Heun", "sample_heun", ["k_heun"], {"second_order": True}),
     ("DPM2", "sample_dpm_2", ["k_dpm_2"], {"scheduler": "karras", "discard_next_to_last_sigma": True, "second_order": True}),
+    ("Res Multistep", "sample_res_multistep", ["res_multistep"], {}),
     ("Kohaku LoNyu Yog", "sample_Kohaku_LoNyu_Yog", ["Kohaku_LoNyu_Yog"], {}),
     ("Restart", sd_samplers_extra.restart_sampler, ["restart"], {"scheduler": "karras", "second_order": True}),
     ("UniPC", sd_samplers_extra.sample_unipc, ["unipc"], {"discard_next_to_last_sigma": True}),
@@ -62,21 +66,15 @@ class CFGDenoiserKDiffusion(sd_samplers_cfg_denoiser.CFGDenoiser):
     @property
     def inner_model(self):
         if self.model_wrap is None:
-            denoiser = k_diffusion.external.CompVisVDenoiser if shared.sd_model.parameterization == "v" else k_diffusion.external.CompVisDenoiser
-            self.model_wrap = denoiser(shared.sd_model, quantize=True)
+            k_model = shared.sd_model.forge_objects.unet.model
+            predictor = getattr(k_model, "predictor", None) or getattr(k_model, "model_sampling", None)
 
-            if shared.sd_model.parameterization == "flow":
-                try:
-                    k_model = shared.sd_model.forge_objects.unet.model
-                    if hasattr(k_model, 'predictor') and hasattr(k_model.predictor, 'sigmas'):
-                        predictor = k_model.predictor
-                        new_sigmas = predictor.sigmas.to(self.model_wrap.sigmas.device, self.model_wrap.sigmas.dtype)
-                        new_log_sigmas = new_sigmas.log()
-                        self.model_wrap.register_buffer("sigmas", new_sigmas)
-                        self.model_wrap.register_buffer("log_sigmas", new_log_sigmas)
-                        print(f"[Forge] Flow sigma range: min={new_sigmas[0].item():.6f}, max={new_sigmas[-1].item():.6f}")
-                except Exception as e:
-                    print(f"[Forge] Failed to set flow sigmas: {e}")
+            if predictor is not None:
+                self.model_wrap = k_diffusion.external.ForgeScheduleLinker(predictor)
+                self.model_wrap.inner_model = shared.sd_model
+            else:
+                denoiser = k_diffusion.external.CompVisVDenoiser if shared.sd_model.parameterization == "v" else k_diffusion.external.CompVisDenoiser
+                self.model_wrap = denoiser(shared.sd_model, quantize=True)
 
         return self.model_wrap
 
@@ -130,6 +128,10 @@ class KDiffusionSampler(sd_samplers_common.Sampler):
         scheduler_name = (p.hr_scheduler if p.is_hr_pass else p.scheduler) or "Automatic"
         if scheduler_name == "Automatic":
             scheduler_name = self.config.options.get("scheduler", None)
+            if scheduler_name is None and getattr(shared.sd_model, "parameterization", None) == "flow":
+                # Flow models have a different sigma domain; Neo defaults to
+                # Normal instead of the legacy k-diffusion sigma table.
+                scheduler_name = "Normal"
 
         scheduler = sd_schedulers.schedulers_map.get(scheduler_name)
 
@@ -176,12 +178,17 @@ class KDiffusionSampler(sd_samplers_common.Sampler):
 
         return sigmas.cpu()
 
+    @staticmethod
+    def _set_sampling_sigmas(p, sigmas):
+        try:
+            unet = p.sd_model.forge_objects.unet
+            unet.model_options.setdefault("transformer_options", {})["sampling_sigmas"] = sigmas
+        except Exception:
+            pass
+
     def sample_img2img(self, p, x, noise, conditioning, unconditional_conditioning, steps=None, image_conditioning=None):
         unet_patcher = self.model_wrap.inner_model.forge_objects.unet
         sampling_prepare(self.model_wrap.inner_model.forge_objects.unet, x=x)
-
-        self.model_wrap.log_sigmas = self.model_wrap.log_sigmas.to(x.device)
-        self.model_wrap.sigmas = self.model_wrap.sigmas.to(x.device)
 
         steps, t_enc = sd_samplers_common.setup_img2img_steps(p, steps)
 
@@ -189,7 +196,7 @@ class KDiffusionSampler(sd_samplers_common.Sampler):
         sigma_sched = sigmas[steps - t_enc - 1 :]
 
         x = x.to(noise)
-        xi = x + noise * sigma_sched[0]
+        xi = self.model_wrap.noise_scaling(sigma_sched[0], noise, x, max_denoise=False)
 
         if opts.img2img_extra_noise > 0:
             p.extra_generation_params["Extra noise"] = opts.img2img_extra_noise
@@ -217,8 +224,12 @@ class KDiffusionSampler(sd_samplers_common.Sampler):
             noise_sampler = self.create_noise_sampler(x, sigmas, p)
             extra_params_kwargs["noise_sampler"] = noise_sampler
 
+        if self.config.options.get("solver_type", None) == "heun":
+            extra_params_kwargs["solver_type"] = "heun"
+
         self.model_wrap_cfg.init_latent = x
         self.last_latent = x
+        self._set_sampling_sigmas(p, sigmas)
         self.sampler_extra_args = {
             "cond": conditioning,
             "image_cond": image_conditioning,
@@ -250,18 +261,14 @@ class KDiffusionSampler(sd_samplers_common.Sampler):
         unet_patcher = self.model_wrap.inner_model.forge_objects.unet
         sampling_prepare(self.model_wrap.inner_model.forge_objects.unet, x=x)
 
-        self.model_wrap.log_sigmas = self.model_wrap.log_sigmas.to(x.device)
-        self.model_wrap.sigmas = self.model_wrap.sigmas.to(x.device)
-
         steps = steps or p.steps
 
         sigmas = self.get_sigmas(p, steps).to(x.device)
 
         if opts.sgm_noise_multiplier:
             p.extra_generation_params["SGM noise multiplier"] = True
-            x = x * torch.sqrt(1.0 + sigmas[0] ** 2.0)
-        else:
-            x = x * sigmas[0]
+
+        x = self.model_wrap.noise_scaling(sigmas[0], x, torch.zeros_like(x), max_denoise=opts.sgm_noise_multiplier)
 
         extra_params_kwargs = self.initialize(p)
         parameters = inspect.signature(self.func).parameters
@@ -280,7 +287,11 @@ class KDiffusionSampler(sd_samplers_common.Sampler):
             noise_sampler = self.create_noise_sampler(x, sigmas, p)
             extra_params_kwargs["noise_sampler"] = noise_sampler
 
+        if self.config.options.get("solver_type", None) == "heun":
+            extra_params_kwargs["solver_type"] = "heun"
+
         self.last_latent = x
+        self._set_sampling_sigmas(p, sigmas)
         self.sampler_extra_args = {
             "cond": conditioning,
             "image_cond": image_conditioning,

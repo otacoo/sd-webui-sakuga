@@ -122,26 +122,67 @@ def predict_eps_sigma(model, input, sigma_in, **kwargs):
     return (input - model(input, sigma_in, **kwargs)) / sigma
 
 
+class FlowSigmaConvert:
+    """Sigma/alpha conversion for flow (rectified-flow) models."""
+
+    schedule = ""
+
+    def marginal_log_mean_coeff(self, sigma):
+        return torch.log1p(-sigma)
+
+    def marginal_alpha(self, t):
+        return 1.0 - t
+
+    def marginal_std(self, t):
+        return t
+
+    def marginal_lambda(self, t):
+        return torch.log((1.0 - t) / t)
+
+
+def predict_eps_flow(model, input, sigma_in, **kwargs):
+    sigma = sigma_in.view(sigma_in.shape[:1] + (1,) * (input.ndim - 1))
+    return (input - model(input, sigma_in, **kwargs)) / sigma
+
+
 def sample_unipc(model, x, sigmas, extra_args=None, callback=None, disable=False, variant="bh1"):
+    extra_args = {} if extra_args is None else extra_args
     timesteps = sigmas.clone()
     if sigmas[-1] < 0.001:
         timesteps[-1] = 0.001
 
-    ns = SigmaConvert()
+    model_sampling = k_diffusion.sampling.get_model_sampling(model)
+    is_flow = getattr(model_sampling, "prediction_type", None) == "const"
 
-    x = x / torch.sqrt(1.0 + timesteps[0] ** 2.0)
-    model_type = "noise"
+    if is_flow:
+        # UniPC divides by alpha, which is (1 - sigma) for flow models.  Keep
+        # the first step away from alpha = 0 to avoid inf/nan coefficients.
+        timesteps[0] = timesteps[0].clamp(max=0.99)
 
-    model_fn = unipc_impl.model_wrapper(
-        lambda input, sigma, **kwargs: predict_eps_sigma(model, input, sigma, **kwargs),
-        ns,
-        model_type=model_type,
-        guidance_type="uncond",
-        model_kwargs=extra_args,
-    )
+        ns = FlowSigmaConvert()
+        model_fn = unipc_impl.model_wrapper(
+            lambda input, sigma, **kwargs: predict_eps_flow(model, input, sigma, **kwargs),
+            ns,
+            model_type="noise",
+            guidance_type="uncond",
+            model_kwargs=extra_args,
+        )
+    else:
+        ns = SigmaConvert()
+        x = x / torch.sqrt(1.0 + timesteps[0] ** 2.0)
+        model_fn = unipc_impl.model_wrapper(
+            lambda input, sigma, **kwargs: predict_eps_sigma(model, input, sigma, **kwargs),
+            ns,
+            model_type="noise",
+            guidance_type="uncond",
+            model_kwargs=extra_args,
+        )
 
     order = min(3, len(timesteps) - 2)
-    uni_pc = unipc_impl.UniPC(model_fn, ns, predict_x0=True, thresholding=False, variant=variant)
+    # Flow models have alpha = 1 - sigma, so the x0 conversion divides by
+    # alpha and is very unstable at the first step.  Use noise prediction
+    # for flow models instead.
+    uni_pc = unipc_impl.UniPC(model_fn, ns, predict_x0=not is_flow, thresholding=False, variant=variant)
     x = uni_pc.sample(x, timesteps=timesteps, skip_type="time_uniform", method="multistep", order=order, lower_order_final=True, callback=callback, disable_pbar=disable)
-    x /= ns.marginal_alpha(timesteps[-1])
+    x = x / ns.marginal_alpha(timesteps[-1])
     return x
