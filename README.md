@@ -179,6 +179,16 @@ If `text_encoder/` is omitted, Sakuga uses `models/text_encoders/qwen_3_06b_base
 
    Adjust these to taste.
 
+Anima is a 2B model, so 30-50 steps at 896x1152 takes time, and Hires. fix plus a 4x upscaler adds considerably more. For quick iteration, use **Anima-Turbo** at **CFG 1** with **8-12 steps**; use Anima-Aesthetic for final images.
+
+#### Anima prompting
+
+- Use Danbooru-style tags, natural-language captions, or a mix of both.
+- Prefix artist tags with `@`, for example `@club8` or `@takeda hiromitsu`. Without the `@`, artist tags have very little effect.
+- For **Anima-Aesthetic**, use CFG `3-5` and avoid `score_*` tags; the aesthetic version already produces high-quality images.
+- For **Anima-Turbo**, use CFG `1` and `8-12` steps.
+- Live previews during sampling are approximate; the final image is decoded through the full VAE.
+
 ## Command-line options
 
 `install.bat` can configure the most common flags. You can also edit `start-webui.bat` or `webui-user.bat` directly.

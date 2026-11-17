@@ -474,9 +474,9 @@ options_templates.update(
 </ul>
                 """
             ),
-            "live_preview_fast_interrupt": OptionInfo(False, "Return image with the selected preview method on interruption").info("speed up interruption"),
+            "live_preview_fast_interrupt": OptionInfo(True, "Return image with the selected preview method on interruption").info("speed up interruption"),
             "js_live_preview_in_modal_lightbox": OptionInfo(True, "Show the live previews in full page image viewer"),
-            "show_progress_every_n_steps": OptionInfo(3, "Generate live preview every N step", gr.Slider, {"minimum": -1, "maximum": 32, "step": 1}).info("-1 = only after completion of a batch"),
+            "show_progress_every_n_steps": OptionInfo(2, "Generate live preview every N step", gr.Slider, {"minimum": -1, "maximum": 32, "step": 1}).info("-1 = only after completion of a batch"),
             "live_preview_refresh_period": OptionInfo(1000, "Progress Bar and Preview update interval").info("in ms"),
         },
     )

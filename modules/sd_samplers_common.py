@@ -68,12 +68,20 @@ def get_decoder(approximation: int) -> Callable:
 
 
 def _anima_cheap_preview(sample, model):
-    from modules_forge.nn._vae import Wan21
+    from modules_forge.nn._vae import Anima
+    vae = getattr(getattr(model, "forge_objects", None), "vae", None)
+
     x = sample[0].movedim(0, -1)
-    factors = torch.tensor(Wan21().latent_rgb_factors, device=x.device, dtype=x.dtype).transpose(0, 1).contiguous()
-    bias = torch.tensor(Wan21().latent_rgb_factors_bias, device=x.device, dtype=x.dtype)
+    factors = torch.tensor(Anima().latent_rgb_factors, device=x.device, dtype=x.dtype).transpose(0, 1).contiguous()
+    bias = torch.tensor(Anima().latent_rgb_factors_bias, device=x.device, dtype=x.dtype)
     x = torch.nn.functional.linear(x, factors, bias)
-    return x.permute(2, 0, 1).unsqueeze(0)
+    x = x.permute(2, 0, 1).unsqueeze(0)
+
+    ratio = int(getattr(vae, "downscale_ratio", 8) or 8)
+    if ratio > 1:
+        x = torch.nn.functional.interpolate(x, scale_factor=ratio, mode="bilinear", align_corners=False)
+
+    return x.clamp(0.0, 1.0) * 2.0 - 1.0
 
 
 @torch.inference_mode()
