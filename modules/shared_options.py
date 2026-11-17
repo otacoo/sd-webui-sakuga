@@ -201,6 +201,8 @@ options_templates.update(
                 """
 Anima is a text-to-image model based on NVIDIA Cosmos architecture with a Qwen3-0.6B text encoder.
 <br><br>
+<b>Prompting:</b> use Danbooru-style tags or natural language. Prefix artist tags with <code>@</code> (for example <code>@club8</code>). If artist styles feel weak, use <b>Anima-Base</b> instead of Aesthetic, place the artist tags earlier in the prompt, and remove <code>artist name</code> from the negative prompt.
+<br><br>
 <b>Required files for safetensors-based loading:</b>
 <ul style='margin-left: 1.5em'>
   <li><code>models/diffusion_models/</code> — the Anima transformer checkpoint (<code>.safetensors</code>)</li>

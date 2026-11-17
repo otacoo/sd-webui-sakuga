@@ -185,8 +185,11 @@ Anima is a 2B model, so 30-50 steps at 896x1152 takes time, and Hires. fix plus 
 
 - Use Danbooru-style tags, natural-language captions, or a mix of both.
 - Prefix artist tags with `@`, for example `@club8` or `@takeda hiromitsu`. Without the `@`, artist tags have very little effect.
+- Place artist tags near the beginning of the prompt, after the quality/safety tags.
+- When testing artist styles, remove `artist name` from the negative prompt — it can suppress the style.
 - For **Anima-Aesthetic**, use CFG `3-5` and avoid `score_*` tags; the aesthetic version already produces high-quality images.
 - For **Anima-Turbo**, use CFG `1` and `8-12` steps.
+- **Anima-Base** has the strongest style and artist adherence. **Anima-Aesthetic** favors its own high-quality default style, and **Anima-Turbo** has an even stronger default style. If a style tag feels weak on Aesthetic, try the same prompt and seed with Base.
 - Live previews during sampling are approximate; the final image is decoded through the full VAE.
 
 ## Command-line options
