@@ -16,6 +16,8 @@ from einops import repeat
 from PIL import Image, ImageOps
 from skimage.exposure import match_histograms
 
+from ldm_patched.modules import model_management
+
 import modules.paths as paths
 import modules.sd_hijack
 import modules.sd_models as sd_models
@@ -391,7 +393,7 @@ class StableDiffusionProcessing:
         conditioning_mask = torch.nn.functional.interpolate(conditioning_mask, size=latent_image.shape[-2:])
         conditioning_mask = conditioning_mask.expand(conditioning_image.shape[0], -1, -1, -1)
         image_conditioning = torch.cat([conditioning_mask, conditioning_image], dim=1)
-        image_conditioning = image_conditioning.to(shared.device).type(self.sd_model.dtype)
+        image_conditioning = image_conditioning.to(shared.device).type(devices.dtype)
 
         return image_conditioning
 
@@ -1305,12 +1307,17 @@ class StableDiffusionProcessingTxt2Img(StableDiffusionProcessing):
             if not self.enable_hr:
                 return samples
 
+            if getattr(self.sd_model, "is_anima", False):
+                model_management.unload_all_models()
+
             devices.torch_gc()
 
             if self.latent_scale_mode is None:
                 decoded_samples = torch.stack(decode_latent_batch(self.sd_model, samples, target_device=devices.cpu, check_for_nans=True)).to(dtype=torch.float32)
             else:
                 decoded_samples = None
+
+            devices.torch_gc()
 
         with sd_models.SkipWritingToConfig():
             sd_models.reload_model_weights(info=self.hr_checkpoint_info)
@@ -1376,6 +1383,7 @@ class StableDiffusionProcessingTxt2Img(StableDiffusionProcessing):
 
             decoded_samples = torch.from_numpy(np.array(batch_images))
             decoded_samples = decoded_samples.to(shared.device, dtype=torch.float32)
+            devices.torch_gc()
 
             if opts.sd_vae_encode_method != "Full":
                 self.extra_generation_params["VAE Encoder"] = opts.sd_vae_encode_method
@@ -1422,6 +1430,7 @@ class StableDiffusionProcessingTxt2Img(StableDiffusionProcessing):
         decoded_samples = decode_latent_batch(self.sd_model, samples, target_device=devices.cpu, check_for_nans=True)
 
         self.is_hr_pass = False
+        devices.torch_gc()
         return decoded_samples
 
     def close(self):
@@ -1701,8 +1710,8 @@ class StableDiffusionProcessingImg2Img(StableDiffusionProcessing):
                 latmask = np.around(latmask)
             latmask = np.tile(latmask[None], (4, 1, 1))
 
-            self.mask = torch.asarray(1.0 - latmask).to(shared.device).type(self.sd_model.dtype)
-            self.nmask = torch.asarray(latmask).to(shared.device).type(self.sd_model.dtype)
+            self.mask = torch.asarray(1.0 - latmask).to(shared.device).type(devices.dtype)
+            self.nmask = torch.asarray(latmask).to(shared.device).type(devices.dtype)
 
             # this needs to be fixed to be done in sample() using actual seeds for batches
             if self.inpainting_fill == 2:
