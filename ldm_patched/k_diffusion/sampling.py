@@ -763,7 +763,6 @@ def res_multistep(model, x, sigmas, extra_args=None, callback=None, disable=None
 
     old_sigma_down = None
     old_denoised = None
-    uncond_denoised = None
 
     for i in trange(len(sigmas) - 1, disable=disable):
         denoised = model(x, sigmas[i] * s_in, **extra_args)

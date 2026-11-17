@@ -99,7 +99,6 @@ def load_anima_engine(checkpoint_info, state_dict=None):
     sd_model.ema_scope = lambda *args, **kwargs: contextlib.nullcontext()
     class AnimaCondStageModel:
         def process_texts(self, texts):
-            from modules import sd_hijack
             token_count = len(engine.text_processing_engine_anima.tokenize(texts)[0][0])
             return texts, token_count
 

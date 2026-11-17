@@ -143,11 +143,6 @@ def check_run_python(code: str, *, return_error: bool = False) -> bool | tuple[b
         return result.returncode == 0
 
 
-def torch_built_with_cuda() -> bool:
-    success, _ = check_run_python("import torch; assert torch.version.cuda is not None", return_error=True)
-    return success
-
-
 def torch_cuda_status() -> tuple[bool, bool, str]:
     code = "import torch; has_cuda = torch.version.cuda is not None; print(int(has_cuda), int(has_cuda and torch.cuda.is_available()))"
     result = subprocess.run([python, "-c", code], capture_output=True, text=True, shell=False)

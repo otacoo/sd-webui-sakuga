@@ -60,30 +60,6 @@ def style(text, *names):
     return "".join(_CODES[name] for name in names) + text + _CODES["reset"]
 
 
-def bold(text):
-    return style(text, "bold")
-
-
-def dim(text):
-    return style(text, "dim")
-
-
-def cyan(text):
-    return style(text, "cyan")
-
-
-def green(text):
-    return style(text, "green")
-
-
-def yellow(text):
-    return style(text, "yellow")
-
-
-def red(text):
-    return style(text, "red")
-
-
 def banner():
     line = style("-" * 58, "dim")
     print()
@@ -103,22 +79,10 @@ def kv(label, value, width=11, indent=2):
     print(f"{' ' * indent}{style(label, 'dim')}{padding}{value}")
 
 
-def detail(label, value, width=11):
-    kv(label, style(value, "dim"), width=width)
-
-
-def path(value):
-    print(f"    {style(value, 'dim')}")
-
-
 def command(args):
     if args:
         print(f"    {style(' '.join(args), 'dim')}")
     print()
-
-
-def ok(message):
-    print(f"  {style('OK:', 'green', 'bold')} {message}")
 
 
 def hint(message):
@@ -127,10 +91,6 @@ def hint(message):
 
 def warn(message):
     print(f"  {style('Warning:', 'yellow', 'bold')} {message}")
-
-
-def error(message):
-    print(f"  {style('Error:', 'red', 'bold')} {message}")
 
 
 def ready(summary, local_url=None, share_url=None):
