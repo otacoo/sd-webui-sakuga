@@ -637,6 +637,7 @@ class Processed:
             "extra_generation_params": self.extra_generation_params,
             "index_of_first_image": self.index_of_first_image,
             "infotexts": self.infotexts,
+            "image_files": [getattr(image, "already_saved_as", None) for image in [*self.images, *self.extra_images]],
             "styles": self.styles,
             "job_timestamp": self.job_timestamp,
             "clip_skip": self.clip_skip,

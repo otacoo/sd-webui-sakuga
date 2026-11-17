@@ -23,6 +23,7 @@ psutil==6.1.1
 pydantic==1.10.22
 rich==14.3.2
 safetensors==0.7.0
+send2trash==1.8.3
 scikit-image==0.25.2
 setuptools>=77.0.3  # torch 2.15 requires >=77.0.3
 spandrel==0.4.2

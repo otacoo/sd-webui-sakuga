@@ -1,5 +1,6 @@
 import csv
 import dataclasses
+import functools
 import json
 import html
 import os
@@ -8,6 +9,7 @@ import sys
 
 import gradio as gr
 import subprocess as sp
+from PIL import Image
 
 from modules import call_queue, shared, ui_tempdir
 from modules.infotext_utils import image_from_url_text
@@ -15,6 +17,12 @@ import modules.images
 from modules.ui_components import ToolButton
 import modules.infotext_utils as parameters_copypaste
 
+try:
+    from send2trash import send2trash
+except ImportError:
+    send2trash = None
+
+delete_symbol = '\U0000274c'  # ❌
 folder_symbol = '\U0001f4c2'  # 📂
 refresh_symbol = '\U0001f504'  # 🔄
 
@@ -152,6 +160,120 @@ def save_files(js_data, images, do_make_zip, index):
     return gr.File.update(value=fullfns, visible=True), plaintext_to_html(f"Saved: {filenames[0]}")
 
 
+def _allowed_output_roots(outdir=None):
+    candidates = [
+        outdir,
+        getattr(shared.opts, "outdir_samples", None),
+        getattr(shared.opts, "outdir_txt2img_samples", None),
+        getattr(shared.opts, "outdir_img2img_samples", None),
+        getattr(shared.opts, "outdir_extras_samples", None),
+        getattr(shared.opts, "outdir_grids", None),
+        getattr(shared.opts, "outdir_txt2img_grids", None),
+        getattr(shared.opts, "outdir_img2img_grids", None),
+        getattr(shared.opts, "outdir_save", None),
+        getattr(shared.opts, "outdir_init_images", None),
+    ]
+
+    roots = []
+    for candidate in candidates:
+        if not candidate:
+            continue
+        root = os.path.normcase(os.path.realpath(os.path.abspath(candidate)))
+        if root not in roots:
+            roots.append(root)
+    return roots
+
+
+def _is_allowed_output_path(path, roots):
+    if not path:
+        return False
+
+    normalized = os.path.normcase(os.path.realpath(os.path.abspath(path)))
+    for root in roots:
+        try:
+            if os.path.commonpath([normalized, root]) == root:
+                return True
+        except ValueError:
+            continue
+    return False
+
+
+def _delete_file(path):
+    if send2trash is not None:
+        try:
+            send2trash(path)
+            return
+        except Exception:
+            pass
+    os.remove(path)
+
+
+def delete_selected_image(js_data, gallery, index, outdir=None):
+    index = int(index) if index is not None else -1
+    if index < 0:
+        return gr.skip(), gr.skip(), gr.skip(), plaintext_to_html("Select an image to delete.")
+
+    if not gallery or index >= len(gallery):
+        return gr.skip(), gr.skip(), gr.skip(), plaintext_to_html("The selected image is no longer available.")
+
+    try:
+        data = json.loads(js_data)
+    except Exception:
+        data = {}
+
+    image_files = data.get("image_files") or []
+    filename = image_files[index] if index < len(image_files) else None
+    if not filename:
+        return gr.skip(), gr.skip(), gr.skip(), plaintext_to_html("This image was not saved to disk.")
+
+    roots = _allowed_output_roots(outdir)
+    if not _is_allowed_output_path(filename, roots):
+        return gr.skip(), gr.skip(), gr.skip(), plaintext_to_html("Refusing to delete a file outside the output directories.")
+
+    filename = os.path.realpath(os.path.abspath(filename))
+    if not os.path.isfile(filename):
+        return gr.skip(), gr.skip(), gr.skip(), plaintext_to_html("The saved image file no longer exists.")
+
+    try:
+        _delete_file(filename)
+        txt_filename = os.path.splitext(filename)[0] + ".txt"
+        if os.path.isfile(txt_filename) and _is_allowed_output_path(txt_filename, roots):
+            _delete_file(txt_filename)
+    except Exception as e:
+        return gr.skip(), gr.skip(), gr.skip(), plaintext_to_html(f"Could not delete {os.path.basename(filename)}: {e}")
+
+    new_images = []
+    for i, item in enumerate(gallery):
+        if i == index:
+            continue
+        try:
+            new_images.append(item if isinstance(item, Image.Image) else image_from_url_text(item))
+        except Exception:
+            pass
+
+    infotexts = data.get("infotexts") or []
+    if index < len(infotexts):
+        infotexts.pop(index)
+    if index < len(image_files):
+        image_files.pop(index)
+
+    try:
+        first_image = int(data.get("index_of_first_image", 0) or 0)
+    except (TypeError, ValueError):
+        first_image = 0
+    if index < first_image:
+        data["index_of_first_image"] = max(0, first_image - 1)
+
+    data["image_files"] = image_files
+    data["infotexts"] = infotexts
+
+    new_index = min(index, len(new_images) - 1) if new_images else -1
+    infotext = plaintext_to_html(infotexts[new_index]) if 0 <= new_index < len(infotexts) else ""
+    status = plaintext_to_html(f"Deleted {os.path.basename(filename)}")
+
+    return gr.update(value=new_images), gr.update(value=json.dumps(data)), infotext, status
+
+
 @dataclasses.dataclass
 class OutputPanel:
     gallery = None
@@ -216,6 +338,9 @@ Requested path was: {f}
                 if tabname != "extras":
                     save = ToolButton('💾', elem_id=f'save_{tabname}', tooltip=f"Save the image to a dedicated directory ({shared.opts.outdir_save}).")
                     save_zip = ToolButton('🗃️', elem_id=f'save_zip_{tabname}', tooltip=f"Save zip archive with images to a dedicated directory ({shared.opts.outdir_save})")
+
+                if tabname in ("txt2img", "img2img"):
+                    delete_button = ToolButton(delete_symbol, elem_id=f'{tabname}_delete_image', tooltip="Delete the selected image from disk.")
 
                 buttons = {
                     'img2img': ToolButton('🖼️', elem_id=f'{tabname}_send_to_img2img', tooltip="Send image and generation parameters to img2img tab."),
@@ -284,6 +409,24 @@ Requested path was: {f}
                             res.html_log,
                         ]
                     )
+
+                    if tabname in ("txt2img", "img2img"):
+                        delete_button.click(
+                            fn=call_queue.wrap_gradio_call(functools.partial(delete_selected_image, outdir=outdir)),
+                            _js="(info, gallery, button) => [info, gallery, confirm('Delete the selected image?') ? selected_gallery_index() : -1]",
+                            inputs=[
+                                res.generation_info,
+                                res.gallery,
+                                delete_button,
+                            ],
+                            outputs=[
+                                res.gallery,
+                                res.generation_info,
+                                res.infotext,
+                                res.html_log,
+                            ],
+                            show_progress=False,
+                        )
 
             else:
                 res.generation_info = gr.HTML(elem_id=f'html_info_x_{tabname}')

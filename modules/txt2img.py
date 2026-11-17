@@ -132,6 +132,13 @@ def txt2img_upscale_function(id_task: str, request: gr.Request, gallery: list[di
     else:
         geninfo["infotexts"][gallery_index] = processed.info
 
+    if geninfo.get("image_files") is not None:
+        new_files = [getattr(image, "already_saved_as", None) for image in processed.images]
+        if shared.opts.hires_button_gallery_insert:
+            geninfo["image_files"][gallery_index + 1 : gallery_index + 1] = new_files
+        else:
+            geninfo["image_files"][gallery_index : gallery_index + 1] = new_files
+
     return new_gallery, json.dumps(geninfo), plaintext_to_html(processed.info), plaintext_to_html(processed.comments, classname="comments")
 
 
