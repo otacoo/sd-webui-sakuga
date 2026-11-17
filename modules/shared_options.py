@@ -323,11 +323,11 @@ options_templates.update(
             "extra_networks_tree_view_explanation": OptionHTML(
                 """
 <b>Tree View</b> adds a folder structure to the Extra Networks panel for easier navigation.
-Disable it below if you prefer a flat list.
+Enable it below to use the tree view.
                 """
             ),
-            "extra_networks_tree_view_enable": OptionInfo(True, "Enable the Tree View").needs_reload_ui(),
-            "extra_networks_tree_view_default_enabled": OptionInfo(True, "Show the Tree View by default").needs_reload_ui(),
+            "extra_networks_tree_view_enable": OptionInfo(False, "Enable the Tree View").needs_reload_ui(),
+            "extra_networks_tree_view_default_enabled": OptionInfo(False, "Show the Tree View by default").needs_reload_ui(),
             "extra_networks_tree_view_default_width": OptionInfo(180, "Default Width for the Tree View", gr.Number).info("in pixels").needs_reload_ui(),
             "div_tree": OptionDiv(),
             "extra_networks_dir_btn_enable": OptionInfo(True, "Enable the Subdirectory Buttons").needs_reload_ui(),
