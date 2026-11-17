@@ -13,7 +13,7 @@ import sys
 from pathlib import Path
 from dataclasses import dataclass
 
-from modules import cmd_args, errors, logging_config
+from modules import cmd_args, console, errors, logging_config
 from modules.paths_internal import extensions_builtin_dir, extensions_dir, script_path
 from modules.timer import startup_timer
 from modules_forge.config import always_disabled_extensions
@@ -307,19 +307,27 @@ def prepare_environment():
 
     tag = git_tag()
 
-    print(f"Python {sys.version}")
-    print(f"Version: {tag}")
+    console.banner()
+    console.kv("Python", f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")
+    console.kv("Version", tag)
 
     if args.reinstall_torch or not is_installed("torch") or not is_installed("torchvision"):
         run(f'"{python}" -m {torch_command}', "Installing torch and torchvision", "Couldn't install torch", live=True)
         startup_timer.record("install torch")
 
+    if is_installed("torch"):
+        try:
+            torch_version, cuda_version = _torch_version()
+            console.kv("PyTorch", f"{torch_version}+{cuda_version}" if cuda_version else torch_version)
+        except Exception:
+            pass
+
     if not args.reinstall_torch and is_installed("torch"):
         try:
             torch_version, _ = _torch_version()
             if tuple(int(part) for part in torch_version.split(".")) < (2, 15, 0):
-                print(f"\nSakuga is tuned for PyTorch 2.15.0+; found {torch_version}.")
-                print("Add --reinstall-torch to COMMANDLINE_ARGS and launch once to update.\n")
+                console.warn(f"Sakuga is tuned for PyTorch 2.15.0+; found {torch_version}")
+                console.hint("add --reinstall-torch to COMMANDLINE_ARGS and launch once to update")
         except Exception:
             pass
 
@@ -455,7 +463,8 @@ def configure_forge_reference_checkout(model_ref: Path):
 
 
 def start():
-    print(f"Launching {'API server' if '--nowebui' in sys.argv else 'Web UI'} with arguments: {' '.join(sys.argv[1:])}")
+    console.section("Launching API server" if "--nowebui" in sys.argv else "Launching Web UI")
+    console.command(sys.argv[1:])
     import webui
 
     if "--nowebui" in sys.argv:

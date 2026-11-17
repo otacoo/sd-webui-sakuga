@@ -4,6 +4,7 @@ import os
 import sys
 import warnings
 
+from modules import console
 from modules.timer import startup_timer
 
 
@@ -20,8 +21,10 @@ class HiddenPrints:
 def shush():
     logging.getLogger("torch.distributed.nn").setLevel(logging.ERROR)
     logging.getLogger("xformers").addFilter(lambda record: "triton" not in record.getMessage().lower())
+    logging.getLogger("torch.utils.flop_counter").addFilter(lambda record: "triton not found" not in record.getMessage())
     warnings.filterwarnings(action="ignore", category=DeprecationWarning, module="pytorch_lightning")
     warnings.filterwarnings(action="ignore", category=UserWarning, module="torchvision")
+    warnings.filterwarnings(action="ignore", category=FutureWarning, message=r"`torch\.jit\.script` is deprecated.*")
 
 
 def imports():
@@ -100,6 +103,7 @@ def initialize_rest(*, reload_script_modules=False):
     from modules import shared, upscaler, scripts
     if cmd_opts.ui_debug_mode:
         shared.sd_upscalers = upscaler.UpscalerLanczos().scalers
+        console.section("Extensions")
         scripts.load_scripts()
         return
 
@@ -112,6 +116,7 @@ def initialize_rest(*, reload_script_modules=False):
     startup_timer.record("list localizations")
 
     with startup_timer.subcategory("load scripts"):
+        console.section("Extensions")
         scripts.load_scripts()
 
     from modules import sakuga_extras

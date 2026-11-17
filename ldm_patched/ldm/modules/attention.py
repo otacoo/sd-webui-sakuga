@@ -12,6 +12,7 @@ import torch
 import torch.nn.functional as F
 from einops import rearrange, repeat
 from ldm_patched.modules import model_management
+from modules import console
 from torch import einsum, nn
 
 from .diffusionmodules.util import AlphaBlender, checkpoint, timestep_embedding
@@ -279,27 +280,29 @@ def attention_flash(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, heads, ma
 if model_management.sage_enabled():
     match args.sage2_function:
         case SageAttentionFuncs.auto:
-            print("Using sage attention")
+            attention_name = "SageAttention"
         case SageAttentionFuncs.fp16_triton:
-            print("Using sage attention (fp16 Triton)")
+            attention_name = "SageAttention (fp16 Triton)"
         case SageAttentionFuncs.fp16_cuda:
-            print("Using sage attention (fp16 CUDA)")
+            attention_name = "SageAttention (fp16 CUDA)"
         case SageAttentionFuncs.fp8_cuda:
-            print("Using sage attention (fp8 CUDA)")
+            attention_name = "SageAttention (fp8 CUDA)"
 
     optimized_attention = attention_sage
 elif model_management.flash_enabled():
-    print("Using flash attention")
+    attention_name = "FlashAttention"
     optimized_attention = attention_flash
 elif model_management.xformers_enabled():
-    print("Using xformers attention")
+    attention_name = "xformers"
     optimized_attention = attention_xformers
 elif model_management.pytorch_attention_enabled():
-    print("Using pytorch sdp attention")
+    attention_name = "PyTorch SDPA"
     optimized_attention = attention_pytorch
 else:
-    print("Using basic attention")
+    attention_name = "basic"
     optimized_attention = attention_basic
+
+console.kv("Attention", attention_name)
 
 optimized_attention_masked = optimized_attention
 

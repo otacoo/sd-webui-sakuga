@@ -15,6 +15,7 @@ import torch
 
 from ldm_patched.modules.args_parser import args
 from ldm_patched.modules.model_patcher import ModelPatcher
+from modules import console
 from modules_forge import stream
 
 
@@ -141,7 +142,7 @@ def get_total_memory(dev=None, torch_total_too=False):
 
 total_vram = get_total_memory(get_torch_device()) / (1024 * 1024)
 total_ram = psutil.virtual_memory().total / (1024 * 1024)
-print(f"Total VRAM {round(total_vram / 1024)} GB; Total RAM {round(total_ram / 1024)} GB")
+console.kv("Memory", f"{round(total_vram / 1024)} GB VRAM  |  {round(total_ram / 1024)} GB RAM")
 
 if not args.always_normal_vram and not args.always_cpu:
     if total_vram <= 4096:
@@ -261,7 +262,7 @@ if ENABLE_PYTORCH_ATTENTION:
 try:
     if args.fast_fp16 and is_nvidia():
         torch.backends.cuda.matmul.allow_fp16_accumulation = True
-        print("allow_fp16_accumulation:", torch.backends.cuda.matmul.allow_fp16_accumulation)
+        console.kv("FP16 accumulation", "on")
 except Exception:
     pass
 
@@ -274,12 +275,12 @@ elif args.always_high_vram or args.always_gpu:
 
 FORCE_FP32 = False
 if args.all_in_fp32:
-    print("Forcing FP32")
+    console.kv("Precision", "FP32 (forced)")
     FORCE_FP32 = True
 
 FORCE_FP16 = False
 if args.all_in_fp16:
-    print("Forcing FP16")
+    console.kv("Precision", "FP16 (forced)")
     FORCE_FP16 = True
 
 if set_vram_to in (VRAMState.LOW_VRAM, VRAMState.NO_VRAM):
@@ -291,15 +292,23 @@ if cpu_state is not CPUState.GPU:
 if cpu_state is CPUState.MPS:
     vram_state = VRAMState.SHARED
 
-print(f"Set vram state to: {vram_state.name}")
+vram_mode = {
+    "DISABLED": "disabled",
+    "NO_VRAM": "none",
+    "LOW_VRAM": "low",
+    "NORMAL_VRAM": "normal",
+    "HIGH_VRAM": "high",
+    "SHARED": "shared",
+}.get(vram_state.name, vram_state.name.lower())
+console.kv("VRAM mode", vram_mode)
 
 ALWAYS_VRAM_OFFLOAD = args.always_offload_from_vram
 if ALWAYS_VRAM_OFFLOAD:
-    print("Always offload VRAM")
+    console.kv("VRAM offload", "always")
 
 PIN_SHARED_MEMORY = args.pin_shared_memory
 if PIN_SHARED_MEMORY:
-    print("Always pin shared GPU memory")
+    console.kv("Pinned memory", "always")
 
 
 def get_torch_device_name(device):
@@ -320,16 +329,16 @@ def get_torch_device_name(device):
 
 try:
     torch_device_name = get_torch_device_name(get_torch_device())
-    print("Device:", torch_device_name)
+    console.kv("Device", torch_device_name)
 except Exception:
     torch_device_name = ""
-    print("Could not identify torch device")
+    console.warn("could not identify the torch device")
 
 if "rtx" in torch_device_name.lower():
     if not (args.cuda_malloc or args.cuda_stream or args.pin_shared_memory):
-        print("Hint: your device supports --cuda-malloc for potential speed improvements")
-        print("Hint: your device supports --cuda-stream for potential speed improvements")
-        print("Hint: your device supports --pin-shared-memory for potential speed improvements")
+        console.hint("your device supports --cuda-malloc for potential speed improvements")
+        console.hint("your device supports --cuda-stream for potential speed improvements")
+        console.hint("your device supports --pin-shared-memory for potential speed improvements")
 
 
 current_loaded_models: list["LoadedModel"] = []
@@ -502,7 +511,7 @@ def load_models_gpu(models, memory_required=0):
             del load_model
         else:
             if hasattr(x, "model"):
-                print(f"Loading Model: {x.model.__class__.__name__}")
+                console.kv("Loading", x.model.__class__.__name__)
             models_to_load.append(load_model)
 
     if len(models_to_load) == 0:
@@ -512,11 +521,11 @@ def load_models_gpu(models, memory_required=0):
                 free_memory(extra_mem, d, models_already_loaded)
 
         if (moving_time := time.perf_counter() - execution_start_time) > 0.1:
-            print(f"Memory cleanup has taken {moving_time:.2f} seconds")
+            console.detail("Cleanup", f"{moving_time:.2f}s")
 
         return
 
-    print(f"Begin to load {len(models_to_load)} model{'s' if len(models_to_load) > 1 else ''}")
+    console.detail("Models", f"{len(models_to_load)} to load")
 
     total_memory_required = {}
     for loaded_model in models_to_load:
@@ -548,10 +557,10 @@ def load_models_gpu(models, memory_required=0):
             minimal_inference_memory = minimum_inference_memory()
             estimated_remaining_memory = current_free_mem - model_memory - minimal_inference_memory
 
-            print("[Memory Management] Current Free GPU Memory (MB) = ", current_free_mem / (2**20))
-            print("[Memory Management] Model Memory (MB) = ", model_memory / (2**20))
-            print("[Memory Management] Minimal Inference Memory (MB) = ", minimal_inference_memory / (2**20))
-            print("[Memory Management] Estimated Remaining GPU Memory (MB) = ", estimated_remaining_memory / (2**20))
+            console.detail(
+                "Memory",
+                f"free {current_free_mem / (2**20):.0f} MB  |  model {model_memory / (2**20):.0f} MB  |  reserve {minimal_inference_memory / (2**20):.0f} MB  |  left {estimated_remaining_memory / (2**20):.0f} MB",
+            )
 
             if estimated_remaining_memory < 0:
                 vram_set_state = VRAMState.LOW_VRAM
@@ -565,7 +574,7 @@ def load_models_gpu(models, memory_required=0):
         current_loaded_models.insert(0, loaded_model)
 
     moving_time = time.perf_counter() - execution_start_time
-    print(f"Moving model(s) has taken {moving_time:.2f} seconds")
+    console.detail("Moved", f"{moving_time:.2f}s")
 
 
 def load_model_gpu(model):

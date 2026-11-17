@@ -40,6 +40,8 @@ It is intended for users who want a compact WebUI, fast startup, and Anima suppo
 - Native **List all models** / **Unload Models** footer links
 - Native **Transparent Background** postprocessing in Extras (Lucida; optional Inspyrenet Rembg)
 - Drag-over top tabs to open a tab while dragging files
+- Modernized startup console with a compact banner and aligned environment/model rows
+- Startup colors respect `NO_COLOR` and `FORCE_COLOR`, and are disabled automatically when output is redirected
 - Live previews in the full-page image viewer
 - Windows `install.bat`, `start-webui.bat`, and `update.bat` helpers
 

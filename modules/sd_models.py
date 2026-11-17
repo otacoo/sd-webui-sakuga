@@ -8,7 +8,7 @@ import threading
 import safetensors.torch
 import torch
 from ldm_patched.modules import model_management
-from modules import cache, devices, errors, extra_networks, hashes, modelloader, paths, processing, script_callbacks, sd_vae, shared
+from modules import cache, console, devices, errors, extra_networks, hashes, modelloader, paths, processing, script_callbacks, sd_vae, shared
 from modules.timer import Timer
 from modules_forge import forge_loader
 from modules_forge.forge_loader import is_anima_checkpoint
@@ -232,7 +232,7 @@ def select_checkpoint():
             error_message += f"\n - directory {os.path.abspath(shared.cmd_opts.ckpt_dir)}"
         error_message += "Can't run without a checkpoint. Find and place a .ckpt or .safetensors file into any of those locations."
         print("", file=sys.stderr)
-        print(f"\033[33m{error_message}\033[0m", file=sys.stderr)
+        print(console.style(error_message, "yellow"), file=sys.stderr)
         return None
 
     checkpoint_info = next(iter(checkpoints_list.values()))
@@ -311,7 +311,7 @@ def read_state_dict(checkpoint_file, print_global_state=False, map_location=None
         pl_sd = torch.load(checkpoint_file, map_location=map_location or shared.weight_load_location)
 
     if print_global_state and "global_step" in pl_sd:
-        print(f"Global Step: {pl_sd['global_step']}")
+        console.kv("Global step", pl_sd["global_step"])
 
     sd = get_state_dict_from_checkpoint(pl_sd)
     return sd
@@ -323,12 +323,13 @@ def get_checkpoint_state_dict(checkpoint_info: CheckpointInfo, timer):
 
     if checkpoint_info in checkpoints_loaded:
         # use checkpoint cache
-        print(f"Loading weights [{sd_model_hash}] from cache")
+        console.kv("Checkpoint", f"{os.path.basename(checkpoint_info.filename)}  [{sd_model_hash}]  cached")
         # move to end as latest
         checkpoints_loaded.move_to_end(checkpoint_info)
         return checkpoints_loaded[checkpoint_info]
 
-    print(f"Loading weights [{sd_model_hash}] from {checkpoint_info.filename}")
+    console.kv("Checkpoint", f"{os.path.basename(checkpoint_info.filename)}  [{sd_model_hash}]")
+    console.path(checkpoint_info.filename)
     res = read_state_dict(checkpoint_info.filename)
     timer.record("load weights from disk")
 
@@ -371,7 +372,7 @@ class SdModelData:
                 except Exception as e:
                     print("", file=sys.stderr)
                     errors.display(e, "loading stable diffusion model")
-                    print("\033[33mStable diffusion model failed to load\033[0m", file=sys.stderr)
+                    print(console.style("stable diffusion model failed to load", "yellow"), file=sys.stderr)
                     self.sd_model = None
 
                 self.was_loaded_at_least_once = True
@@ -425,10 +426,12 @@ def load_model(checkpoint_info=None, already_loaded_state_dict=None):
 
     checkpoint_info = checkpoint_info or select_checkpoint()
     if checkpoint_info is None:
-        print("\033[33mNo model loaded — place a .ckpt or .safetensors file in models/diffusion_models/\033[0m")
+        console.warn("no model loaded; place a .ckpt or .safetensors file in models/diffusion_models/")
         return None
 
     timer = Timer()
+
+    console.section("Model")
 
     if model_data.sd_model is not None:
         if model_data.sd_model.filename == checkpoint_info.filename:
@@ -505,7 +508,7 @@ def load_model(checkpoint_info=None, already_loaded_state_dict=None):
 
     timer.record("calculate empty prompt")
 
-    print(f"Model loaded in {timer.summary()}.")
+    console.kv("Model loaded", timer.summary())
 
     gc.collect()
     return sd_model

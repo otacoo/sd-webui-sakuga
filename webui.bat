@@ -58,7 +58,7 @@ echo Warning: Failed to upgrade PIP version
 :activate_venv
 set PYTHON="%VENV_DIR%\Scripts\Python.exe"
 call "%VENV_DIR%\Scripts\activate.bat"
-echo venv %PYTHON%
+echo Virtual environment: %PYTHON%
 
 :skip_venv
 goto :launch
@@ -98,7 +98,7 @@ exit /b
 py -3.11 -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 11) else 1)" >nul 2>nul
 if not errorlevel 1 (
     set "PYTHON=py -3.11"
-    echo Using Python 3.11: py -3.11
+    echo Python 3.11: py -3.11
     exit /b 0
 )
 
@@ -106,7 +106,7 @@ for /f "delims=" %%P in ('where python3.11 2^>nul') do (
     "%%~P" -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 11) else 1)" >nul 2>nul
     if not errorlevel 1 (
         set "PYTHON="%%~P""
-        echo Using Python 3.11: "%%~P"
+        echo Python 3.11: "%%~P"
         exit /b 0
     )
 )
@@ -115,7 +115,7 @@ for /f "delims=" %%P in ('where python 2^>nul') do (
     "%%~P" -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 11) else 1)" >nul 2>nul
     if not errorlevel 1 (
         set "PYTHON="%%~P""
-        echo Using Python 3.11: "%%~P"
+        echo Python 3.11: "%%~P"
         exit /b 0
     )
 )
@@ -129,7 +129,7 @@ for %%P in (
         "%%~P" -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 11) else 1)" >nul 2>nul
         if not errorlevel 1 (
             set "PYTHON="%%~P""
-            echo Using Python 3.11: "%%~P"
+            echo Python 3.11: "%%~P"
             exit /b 0
         )
     )

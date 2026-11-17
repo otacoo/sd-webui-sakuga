@@ -75,8 +75,10 @@ def cuda_malloc_supported():
 def try_cuda_malloc():
     import os
 
+    from modules import console
+
     if not cuda_malloc_supported():
-        print("Failed to use cudaMallocAsync backend...")
+        console.warn("cudaMallocAsync is not available; using the default allocator")
         return
 
     env_var = os.environ.get("PYTORCH_CUDA_ALLOC_CONF", None)
@@ -86,4 +88,4 @@ def try_cuda_malloc():
         env_var += ",backend:cudaMallocAsync"
 
     os.environ["PYTORCH_CUDA_ALLOC_CONF"] = env_var
-    print("Using cudaMallocAsync backend")
+    console.kv("Allocator", "cudaMallocAsync")

@@ -5,7 +5,7 @@ if __name__ == "__main__":
 import os
 import time
 
-from modules import timer
+from modules import console, timer
 from modules import initialize_util
 from modules import initialize
 from threading import Thread
@@ -47,7 +47,7 @@ def api_only_worker():
     script_callbacks.before_ui_callback()
     script_callbacks.app_started_callback(None, app)
 
-    print(f"Startup time: {startup_timer.summary()}.")
+    console.ready(startup_timer.summary())
     api.launch(server_name=initialize_util.gradio_server_name(), port=cmd_opts.port if cmd_opts.port else 7861, root_path=f"/{cmd_opts.subpath}" if cmd_opts.subpath else "")
 
 
@@ -91,6 +91,7 @@ def webui_worker():
             auth=gradio_auth_creds,
             inbrowser=auto_launch_browser,
             prevent_thread_lock=True,
+            quiet=True,
             allowed_paths=cmd_opts.gradio_allowed_path,
             app_kwargs={"docs_url": "/docs", "redoc_url": "/redoc"},
             root_path=f"/{cmd_opts.subpath}" if cmd_opts.subpath else "",
@@ -120,7 +121,7 @@ def webui_worker():
             script_callbacks.app_started_callback(shared.demo, app)
 
         timer.startup_record = startup_timer.dump()
-        print(f"Startup time: {startup_timer.summary()}.")
+        console.ready(startup_timer.summary(), local_url=local_url, share_url=share_url)
 
         try:
             while True:

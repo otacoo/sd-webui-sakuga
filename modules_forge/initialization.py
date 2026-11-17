@@ -1,5 +1,7 @@
 import os
 
+from modules import console
+
 
 def initialize_forge():
     from ldm_patched.modules import args_parser
@@ -8,7 +10,7 @@ def initialize_forge():
 
     if args_parser.args.gpu_device_id is not None:
         os.environ["CUDA_VISIBLE_DEVICES"] = str(args_parser.args.gpu_device_id)
-        print("Set device to:", args_parser.args.gpu_device_id)
+        console.kv("Device override", args_parser.args.gpu_device_id)
 
     if args_parser.args.cuda_malloc:
         from modules_forge.cuda_malloc import try_cuda_malloc
@@ -25,7 +27,7 @@ def initialize_forge():
     modules_forge.patch_basic.patch_all_basics()
 
     from modules_forge import stream
-    print("CUDA Stream Activated: ", stream.using_stream)
+    console.kv("CUDA streams", "on" if stream.using_stream else "off")
 
     from modules_forge.shared import diffusers_dir
 
