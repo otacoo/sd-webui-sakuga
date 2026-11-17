@@ -223,7 +223,7 @@ class AnimaEngine:
             offload_device=model_management.text_encoder_offload_device(),
         )
 
-        vae = VAEWrapper(model=vae_model, dtype=torch.float16)
+        vae = VAEWrapper(model=vae_model, dtype=model_management.vae_dtype())
 
         class ClipWrapper:
             def __init__(self, patcher, te, tok1, tok2):

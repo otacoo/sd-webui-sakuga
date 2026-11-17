@@ -236,13 +236,28 @@ def load_anima_transformer(state_dict):
     )
 
     load_state_dict_strict(transformer, sd, log_name="Anima Transformer")
-    transformer = transformer.half()
+
+    from ldm_patched.modules import model_management
+    model_params = sum(param.numel() for param in transformer.parameters())
+    bf16_supported = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
+    dtype = model_management.unet_dtype(model_params=model_params)
+    if dtype in (torch.float8_e4m3fn, torch.float8_e5m2):
+        dtype = torch.bfloat16 if bf16_supported else torch.float16
+    force_fp16 = (
+        getattr(model_management.args, "unet_in_fp16", False)
+        or getattr(model_management.args, "all_in_fp16", False)
+        or getattr(model_management, "FORCE_FP16", False)
+    )
+    if dtype == torch.float16 and bf16_supported and not force_fp16:
+        dtype = torch.bfloat16
+
+    transformer = transformer.to(dtype)
     transformer.eval()
     for param in transformer.parameters():
         param.requires_grad = False
 
-    transformer.storage_dtype = torch.float16
-    transformer.computation_dtype = torch.float16
+    transformer.storage_dtype = dtype
+    transformer.computation_dtype = dtype
     transformer.load_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     transformer.initial_device = torch.device("cpu")
     transformer.offload_device = torch.device("cpu")
