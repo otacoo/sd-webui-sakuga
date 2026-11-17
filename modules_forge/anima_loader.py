@@ -34,20 +34,6 @@ def find_anima_text_encoder():
     return _find_file_in(TE_DIR, ANIMA_TE_FILENAME)
 
 
-def is_anima_model(path: str) -> bool:
-    if not os.path.isdir(path):
-        return False
-    index_path = os.path.join(path, "model_index.json")
-    if not os.path.isfile(index_path):
-        return False
-    try:
-        with open(index_path, "r") as f:
-            data = json.load(f)
-        return data.get("_class_name") == "AnimaPipeline"
-    except (json.JSONDecodeError, KeyError):
-        return False
-
-
 def strip_state_dict_prefix(sd):
     prefixes = ("model.diffusion_model.", "net.")
     for prefix in prefixes:
