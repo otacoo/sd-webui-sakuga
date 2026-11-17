@@ -1,3 +1,4 @@
+import os
 import shlex
 import subprocess
 from copy import copy
@@ -7,6 +8,9 @@ from functools import wraps
 def patch(symlink: bool):
     if hasattr(subprocess, "__original_run"):
         return
+
+    if not symlink:
+        os.environ.setdefault("UV_LINK_MODE", "copy")
 
     subprocess.__original_run = subprocess.run
     BAD_FLAGS = ("--prefer-binary", "--ignore-installed", "-I")
