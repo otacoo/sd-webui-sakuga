@@ -224,7 +224,7 @@
 
         var btn = document.createElement('button');
         btn.id = btnId;
-        btn.className = 'lg secondary gradio-button generate-box-enqueue';
+        btn.className = interruptBtn.className.replace('generate-box-interrupt', 'generate-box-enqueue');
         btn.title = 'Queue current prompt to run after the current generation finishes';
         btn.textContent = 'Enqueue';
 
