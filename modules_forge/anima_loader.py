@@ -94,13 +94,7 @@ def detect_anima_config_from_state_dict(state_dict):
     return config
 
 
-class AnimaModelConfig:
-    sampling_settings = {"multiplier": 1.0, "shift": 3.0}
-    memory_usage_factor = 1.32
-
-
 def _load_safetensors_sd(filepath):
-    from ldm_patched.modules import model_management
     sd = {}
     with safetensors.torch.safe_open(filepath, framework="pt") as sf:
         for k in sf.keys():
@@ -133,22 +127,6 @@ def load_state_dict_strict(model, sd, log_name=None, ignore_start=None):
         print(f"    !! SIZE MISMATCHES in {log_name}")
     if len(unexpected) > 0:
         print(f"    !! UNEXPECTED keys in {log_name}: {unexpected[:5]}{'...' if len(unexpected) > 5 else ''}")
-
-
-def _convert_vae_sd_5d_to_4d(sd):
-    out = {}
-    skipped = 0
-    for k, v in sd.items():
-        if "time_conv" in k:
-            skipped += 1
-            continue
-        if v.dim() == 5 and v.shape[2] in (1, 3):
-            out[k] = v[:, :, -1, :, :].contiguous()
-        else:
-            out[k] = v
-    if skipped:
-        print(f"  Skipped {skipped} temporal keys (not needed for image-only)")
-    return out
 
 
 def load_anima_vae(filepath=None):
@@ -290,34 +268,36 @@ def load_anima_tokenizers():
     tokenizer = None
     tokenizer_2 = None
 
-    if os.path.isdir(TOKENIZER_DIR) and os.path.isfile(os.path.join(TOKENIZER_DIR, "tokenizer_config.json")):
+    if os.path.isfile(os.path.join(TOKENIZER_DIR, "tokenizer_config.json")):
         try:
             tokenizer = Qwen2Tokenizer.from_pretrained(TOKENIZER_DIR)
         except Exception as e:
             print(f"Failed to load Qwen2 tokenizer from {TOKENIZER_DIR}: {e}")
 
     if tokenizer is None:
+        print("Qwen2 tokenizer not found locally; downloading from HuggingFace: Qwen/Qwen3-0.6B")
         try:
             tokenizer = Qwen2Tokenizer.from_pretrained("Qwen/Qwen3-0.6B")
         except Exception as e:
-            print(f"Failed to load Qwen2 tokenizer from HuggingFace cache: {e}")
+            print(f"Failed to load Qwen2 tokenizer from HuggingFace: {e}")
 
     if tokenizer is None:
         raise FileNotFoundError(
             f"Qwen2 tokenizer not found. Please place tokenizer files in:\n  {TOKENIZER_DIR}/"
         )
 
-    if os.path.isdir(TOKENIZER2_DIR) and os.path.isfile(os.path.join(TOKENIZER2_DIR, "tokenizer_config.json")):
+    if os.path.isfile(os.path.join(TOKENIZER2_DIR, "tokenizer_config.json")):
         try:
             tokenizer_2 = T5TokenizerFast.from_pretrained(TOKENIZER2_DIR)
         except Exception as e:
             print(f"Failed to load T5 tokenizer from {TOKENIZER2_DIR}: {e}")
 
     if tokenizer_2 is None:
+        print("T5 tokenizer not found locally; downloading from HuggingFace: google-t5/t5-base")
         try:
             tokenizer_2 = T5TokenizerFast.from_pretrained("google-t5/t5-base")
         except Exception as e:
-            print(f"Failed to load T5 tokenizer from HuggingFace cache: {e}")
+            print(f"Failed to load T5 tokenizer from HuggingFace: {e}")
 
     if tokenizer_2 is None:
         raise FileNotFoundError(
@@ -325,6 +305,23 @@ def load_anima_tokenizers():
         )
 
     return tokenizer, tokenizer_2
+
+
+def _finalize_anima_components(transformer, vae, text_encoder):
+    tokenizer, tokenizer_2 = load_anima_tokenizers()
+
+    for model in (transformer, vae, text_encoder):
+        model.eval()
+        for param in model.parameters():
+            param.requires_grad = False
+
+    return {
+        "tokenizer": tokenizer,
+        "tokenizer_2": tokenizer_2,
+        "text_encoder": text_encoder,
+        "vae": vae,
+        "transformer": transformer,
+    }
 
 
 def load_anima_components(path):
@@ -344,7 +341,6 @@ def load_anima_components(path):
     te_path = os.path.join(path, "text_encoder")
     vae_path = os.path.join(path, "vae")
 
-    transformer_sd = {}
     transformer_dir = os.path.join(path, "transformer")
     transformer_file = os.path.join(transformer_dir, "diffusion_pytorch_model.safetensors")
     if not os.path.isfile(transformer_file):
@@ -367,20 +363,7 @@ def load_anima_components(path):
     else:
         text_encoder = load_anima_text_encoder(te_file)
 
-    tokenizer, tokenizer_2 = load_anima_tokenizers()
-
-    for model in [transformer, vae, text_encoder]:
-        model.eval()
-        for param in model.parameters():
-            param.requires_grad = False
-
-    return {
-        "tokenizer": tokenizer,
-        "tokenizer_2": tokenizer_2,
-        "text_encoder": text_encoder,
-        "vae": vae,
-        "transformer": transformer,
-    }
+    return _finalize_anima_components(transformer, vae, text_encoder)
 
 
 def load_anima_from_state_dict(state_dict, vae_path=None, te_path=None):
@@ -398,31 +381,4 @@ def load_anima_from_state_dict(state_dict, vae_path=None, te_path=None):
     else:
         text_encoder = load_anima_text_encoder(te_path)
 
-    tokenizer, tokenizer_2 = load_anima_tokenizers()
-
-    for model in [transformer, vae, text_encoder]:
-        model.eval()
-        for param in model.parameters():
-            param.requires_grad = False
-
-    return {
-        "tokenizer": tokenizer,
-        "tokenizer_2": tokenizer_2,
-        "text_encoder": text_encoder,
-        "vae": vae,
-        "transformer": transformer,
-    }
-
-
-def detect_anima_from_state_dict(state_dict: dict) -> bool:
-    anima_markers = ("blocks.0.mlp.layer1.weight", "x_embedder.proj.1.weight",
-                     "llm_adapter.blocks.0.cross_attn.q_proj.weight")
-    for k in state_dict:
-        for marker in anima_markers:
-            if k.endswith(marker):
-                return True
-    return False
-
-
-def is_anima_state_dict(state_dict: dict) -> bool:
-    return detect_anima_from_state_dict(state_dict)
+    return _finalize_anima_components(transformer, vae, text_encoder)
