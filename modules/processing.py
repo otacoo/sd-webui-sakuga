@@ -195,6 +195,7 @@ class StableDiffusionProcessing:
     width: int = 512
     height: int = 512
     tiling: bool = None
+    restore_faces: bool = False  # ignored; kept for extension compatibility
     do_not_save_samples: bool = False
     do_not_save_grid: bool = False
     extra_generation_params: dict[str, Any] = None
