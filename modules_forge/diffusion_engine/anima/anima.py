@@ -1,6 +1,7 @@
 import torch
 
 from ldm_patched.modules import model_management
+from modules import shared
 from modules_forge.forge_loader import ForgeObjects
 from modules_forge.text_processing.anima_engine import AnimaTextProcessingEngine
 
@@ -39,12 +40,102 @@ class VAEWrapper:
     def encode(self, pixel_samples):
         if pixel_samples.ndim != 4:
             raise ValueError(f"VAE encode expects 4D input (B, H, W, C), got {pixel_samples.shape}")
+
+        if model_management.VAE_ALWAYS_TILED:
+            return self.encode_tiled(pixel_samples)
+
         _samples = pixel_samples.movedim(-1, 1)
-        memory_used = self.memory_used_encode(_samples.shape, self.vae_dtype)
-        model_management.load_models_gpu([self.patcher], memory_required=memory_used)
-        pixels_in = self.process_input(_samples).to(self.vae_dtype).to(self.device)
-        out = self.first_stage_model.encode(pixels_in).to(self.output_device).float()
-        return out
+
+        try:
+            memory_used = self.memory_used_encode(_samples.shape, self.vae_dtype)
+            model_management.load_models_gpu([self.patcher], memory_required=memory_used)
+            free_memory = model_management.get_free_memory(self.device)
+            if free_memory < memory_used * 1.25:
+                print("Anima VAE encode: using tiled encoding due to limited free memory.")
+                return self.encode_tiled_(_samples)
+
+            batch_number = max(1, int(free_memory / memory_used))
+            samples = torch.empty(
+                (
+                    _samples.shape[0],
+                    self.latent_channels,
+                    round(_samples.shape[2] / self.downscale_ratio),
+                    round(_samples.shape[3] / self.downscale_ratio),
+                ),
+                device=self.output_device,
+            )
+
+            for x in range(0, _samples.shape[0], batch_number):
+                pixels_in = self.process_input(_samples[x : x + batch_number]).to(self.vae_dtype).to(self.device)
+                samples[x : x + batch_number] = self.first_stage_model.encode(pixels_in).to(self.output_device).float()
+
+        except (model_management.OOM_EXCEPTION, torch.OutOfMemoryError):
+            print("Warning: Ran out of memory when regular Anima VAE encoding, retrying with tiled VAE encoding.")
+            model_management.soft_empty_cache()
+            samples = self.encode_tiled_(_samples)
+
+        return samples
+
+    def encode_tiled(self, pixel_samples):
+        if pixel_samples.ndim != 4:
+            raise ValueError(f"VAE encode expects 4D input (B, H, W, C), got {pixel_samples.shape}")
+
+        model_management.load_model_gpu(self.patcher)
+        return self.encode_tiled_(pixel_samples.movedim(-1, 1))
+
+    def encode_tiled_(self, pixel_samples, tile_x=0, tile_y=0, overlap=0):
+        from ldm_patched.modules.utils import tiled_scale, ProgressBar, get_tiled_scale_steps
+
+        tile_x = int(tile_x or shared.opts.tile_size or 512)
+        tile_y = int(tile_y or shared.opts.tile_size or 512)
+        overlap = int(overlap or shared.opts.tile_overlap or 64)
+        overlap = max(0, min(overlap, min(tile_x, tile_y) // 4))
+
+        steps = pixel_samples.shape[0] * get_tiled_scale_steps(pixel_samples.shape[3], pixel_samples.shape[2], tile_x, tile_y, overlap)
+        steps += pixel_samples.shape[0] * get_tiled_scale_steps(pixel_samples.shape[3], pixel_samples.shape[2], tile_x // 2, tile_y * 2, overlap)
+        steps += pixel_samples.shape[0] * get_tiled_scale_steps(pixel_samples.shape[3], pixel_samples.shape[2], tile_x * 2, tile_y // 2, overlap)
+        pbar = ProgressBar(steps, title="VAE tiled encode")
+
+        model_management.load_models_gpu([self.patcher])
+
+        def encode_fn(tile):
+            return self.first_stage_model.encode(self.process_input(tile).to(self.vae_dtype).to(self.device)).float()
+
+        samples = tiled_scale(
+            pixel_samples,
+            encode_fn,
+            tile_x,
+            tile_y,
+            overlap,
+            upscale_amount=(1 / self.downscale_ratio),
+            out_channels=self.latent_channels,
+            output_device=self.output_device,
+            pbar=pbar,
+        )
+        samples = samples + tiled_scale(
+            pixel_samples,
+            encode_fn,
+            tile_x * 2,
+            tile_y // 2,
+            overlap,
+            upscale_amount=(1 / self.downscale_ratio),
+            out_channels=self.latent_channels,
+            output_device=self.output_device,
+            pbar=pbar,
+        )
+        samples = samples + tiled_scale(
+            pixel_samples,
+            encode_fn,
+            tile_x // 2,
+            tile_y * 2,
+            overlap,
+            upscale_amount=(1 / self.downscale_ratio),
+            out_channels=self.latent_channels,
+            output_device=self.output_device,
+            pbar=pbar,
+        )
+        samples = samples / 3.0
+        return samples
 
     def decode(self, samples):
         if samples.ndim != 4:

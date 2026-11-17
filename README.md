@@ -231,6 +231,7 @@ chmod +x webui.sh webui-user.sh
 - **No model loaded** — place an SD1/SDXL checkpoint or an Anima model in `models/diffusion_models/` and refresh the checkpoint list.
 - **Anima VAE not found** — check for `models/VAE/qwen_image_vae.safetensors`.
 - **Anima text encoder not found** — check for `models/text_encoders/qwen_3_06b_base.safetensors`.
+- **Anima Hires. fix runs out of VAE memory** — Sakuga automatically retries with tiled VAE encoding. If it still runs out of memory, lower **Settings → VAE → Tile Size for Tiled VAE** (for example, to `256`) or enable the **Never OOM** VAE option.
 - **Tokenizer errors** — make sure `modules_forge/text_processing/tokenizer/` and `tokenizer_2/` have not been deleted. Restore them with `git checkout -- modules_forge/text_processing`.
 - **Installer asks about renaming `webui-user.bat`** — accept if you want the installer to generate a clean `start-webui.bat`; the original `webui-user.bat` is kept in Git history if you need it back.
 
