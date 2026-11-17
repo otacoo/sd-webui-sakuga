@@ -5,7 +5,7 @@ setlocal enabledelayedexpansion
 
 set "BAT_FILE=%~dp0webui-user.bat"
 set "NEW_BAT=%~dp0start-webui.bat"
-set "ARGS=--no-download-sd-model --theme dark"
+set "ARGS=--theme dark"
 
 :: Rename webui-user.bat to start-webui.bat if not already done
 if not exist "%NEW_BAT%" (

@@ -8,6 +8,7 @@ from ldm_patched.modules import args_parser
 
 parser = args_parser.parser
 parser.add_argument("-f", action="store_true", help=argparse.SUPPRESS)  # allows running as root; implemented outside of webui
+parser.add_argument("--no-download-sd-model", action="store_true", help=argparse.SUPPRESS)  # deprecated no-op; models are never downloaded automatically
 
 parser.add_argument("--update-all-extensions", action="store_true", help="launch.py argument: download updates for all extensions when starting the program")
 parser.add_argument("--skip-python-version-check", action="store_true", help="launch.py argument: do not check python version")
@@ -74,7 +75,6 @@ parser.add_argument("--server-name", type=str, help="Sets hostname of server", d
 parser.add_argument("--no-gradio-queue", action="store_true", help="Disables gradio queue; causes the webpage to use http requests instead of websockets; was the default in earlier versions")
 parser.add_argument("--skip-version-check", action="store_true", help="Do not check versions of torch and xformers")
 parser.add_argument("--no-hashing", action="store_true", help="disable sha256 hashing of checkpoints to help loading performance", default=False)
-parser.add_argument("--no-download-sd-model", action="store_true", help="don't download SD1.5 model even if no model is found in --ckpt-dir", default=False)
 parser.add_argument("--subpath", type=str, help="customize the subpath for gradio, use with reverse proxy")
 parser.add_argument("--api-server-stop", action="store_true", help="enable server stop/restart/kill via api")
 parser.add_argument("--timeout-keep-alive", type=int, default=30, help="set timeout_keep_alive for uvicorn")

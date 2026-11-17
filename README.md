@@ -80,7 +80,7 @@ It is intended for users who want a compact WebUI, fast startup, and Anima suppo
 
    The first launch installs the Python requirements and may take a while. Later launches are much faster.
 
-By default the launcher uses `--no-download-sd-model`, so the WebUI will start without a checkpoint and wait for you to add one.
+Sakuga does not download models automatically. The WebUI starts without a checkpoint and waits for you to add one.
 
 ## Model setup
 
@@ -210,7 +210,6 @@ Anima Edit is reference conditioning, not a normal img2img denoise. Select the E
 
 | Flag | Purpose |
 | --- | --- |
-| `--no-download-sd-model` | Do not download a default checkpoint |
 | `--theme dark` | Start with the dark theme |
 | `--uv` | Use the `uv` package manager |
 | `--uv-symlink` | Use `uv` with symlinked packages to save disk space |
