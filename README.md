@@ -6,7 +6,8 @@
 
 ## What is Sakuga?
 
-Sakuga is a focused Stable Diffusion WebUI forked from **Haoming02's Forge Classic**. It keeps the lightweight SD1/SDXL workflow of Classic and adds native support for **Anima**.
+Sakuga is a focused Stable Diffusion WebUI forked from **Haoming02's Forge Classic**.\
+It keeps the lightweight SD1/SDXL workflow of Classic and adds native support for **Anima**.
 
 Current architectures: **SD1**, **SDXL**, and **Anima**. Other model families are not supported.
 
@@ -52,9 +53,6 @@ It is intended for users who want a compact WebUI, fast startup, and Anima suppo
 - **Python 3.11.x** — 3.11.9 recommended, or use `uv`
   - On Windows, `webui.bat` automatically looks for Python 3.11 even if another Python version comes first on `PATH`. If yours is in a non-standard location, set `PYTHON` in `start-webui.bat`.
 - An NVIDIA GPU with current CUDA drivers is strongly recommended
-- PyTorch `2.15.0+cu134` is installed by the launcher
-- Enough disk space for Python packages and model weights
-- Optional: `python -m pip install transparent-background` to enable Inspyrenet Rembg in the Transparent Background postprocessor. Lucida works without it.
 
 ## Installation
 
@@ -86,8 +84,6 @@ It is intended for users who want a compact WebUI, fast startup, and Anima suppo
 Sakuga does not download models automatically. The WebUI starts without a checkpoint and waits for you to add one.
 
 ## Model setup
-
-Model weights are not included with Sakuga. Download the checkpoints and components you need from their respective sources.
 
 Sakuga uses ComfyUI-style model folders. Checkpoints and LoRAs are scanned recursively, so you can place files directly in the parent folder or organize them by model family:
 
@@ -124,7 +120,7 @@ models/ESRGAN/         upscalers
 
 ### Anima
 
-Anima needs the transformer, the VAE, and the Qwen3-0.6B text encoder. The tokenizers are already bundled with Sakuga.
+Anima needs the transformer, the VAE, and the Qwen3-0.6B text encoder.
 
 #### Option A — single-file checkpoint
 
@@ -180,7 +176,6 @@ If `text_encoder/` is omitted, Sakuga uses `models/text_encoders/qwen_3_06b_base
 
    Adjust these to taste.
 
-Anima is a 2B model, so 30-50 steps at 896x1152 takes time, and Hires. fix plus a 4x upscaler adds considerably more. For quick iteration, use **Anima-Turbo** at **CFG 1** with **8-12 steps**; use Anima-Aesthetic for final images.
 
 #### Anima Edit
 
@@ -197,15 +192,6 @@ Anima Edit is reference conditioning, not a normal img2img denoise. Select the E
 2. Select the RGBA VAE in **Settings → VAE**, and load the RGBA LoRA at strength `1.0`.
 3. Add `transparent background` (or `isolated on a transparent background`) to the prompt.
 4. Save as PNG to keep the alpha channel. If the background stays opaque, raise the trigger weight (for example `(transparent background:1.3)`) rather than the LoRA strength.
-
-#### Anima prompting
-
-- Use Danbooru-style tags, natural-language captions, or a mix of both.
-- Prefix artist tags with `@`, for example `@club8` or `@takeda hiromitsu`. Without the `@`, artist tags have very little effect.
-- Place artist tags near the beginning of the prompt, after the quality/safety tags.
-- For **Anima-Aesthetic**, use CFG `3-5` and avoid `score_*` tags; the aesthetic version already produces high-quality images.
-- For **Anima-Turbo**, use CFG `1` and `8-12` steps.
-- Live previews during sampling are approximate; the final image is decoded through the full VAE.
 
 ## Command-line options
 
