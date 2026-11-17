@@ -1709,7 +1709,7 @@ class StableDiffusionProcessingImg2Img(StableDiffusionProcessing):
             latmask = latmask[0]
             if self.mask_round:
                 latmask = np.around(latmask)
-            latmask = np.tile(latmask[None], (4, 1, 1))
+            latmask = np.tile(latmask[None], (self.init_latent.shape[1], 1, 1))
 
             self.mask = torch.asarray(1.0 - latmask).to(shared.device).type(devices.dtype)
             self.nmask = torch.asarray(latmask).to(shared.device).type(devices.dtype)
