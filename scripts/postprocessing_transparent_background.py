@@ -12,6 +12,7 @@ import gradio as gr
 from PIL import Image
 
 from modules import scripts_postprocessing, shared
+from modules.ui_components import InputAccordion
 
 _remover = None
 _lucida = None
@@ -106,8 +107,7 @@ class ScriptPostprocessingTransparentBackground(scripts_postprocessing.ScriptPos
         if not models:
             models = ["(none available)"]
 
-        with gr.Accordion(label="Transparent Background", open=False):
-            enabled = gr.Checkbox(label="Remove background", value=True)
+        with InputAccordion(False, label="Transparent Background") as enabled:
             model_choice = gr.Radio(
                 label="Model",
                 choices=models,

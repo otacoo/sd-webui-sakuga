@@ -169,7 +169,12 @@ def load_anima_vae(filepath=None):
     if has_5d:
         from modules_forge.nn.wan_vae import WanVAE
 
-        print("  Loading native 3D (temporal) VAE")
+        encoder_conv = vae_sd.get("encoder.conv1.weight")
+        decoder_conv = vae_sd.get("decoder.head.2.weight")
+        image_channels = encoder_conv.shape[1] if encoder_conv is not None and encoder_conv.dim() == 5 else 3
+        conv_out_channels = decoder_conv.shape[0] if decoder_conv is not None and decoder_conv.dim() == 5 else 3
+
+        print(f"  Loading native 3D (temporal) VAE ({image_channels}ch in / {conv_out_channels}ch out)")
         vae = WanVAE(
             base_dim=96,
             z_dim=16,
@@ -177,8 +182,8 @@ def load_anima_vae(filepath=None):
             num_res_blocks=2,
             attn_scales=[],
             temporal_downsample=[False, True, True],
-            image_channels=3,
-            conv_out_channels=3,
+            image_channels=image_channels,
+            conv_out_channels=conv_out_channels,
             dropout=0.0,
         )
         load_state_dict_strict(vae, vae_sd, log_name="Anima VAE")

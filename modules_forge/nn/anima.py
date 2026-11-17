@@ -8,6 +8,8 @@ from einops.layers.torch import Rearrange
 from torch import nn
 from torchvision import transforms
 
+from modules_forge.anima_reference import reference as anima_reference
+
 
 def pad_to_patch_size(x, patch_size):
     B, C, T, H, W = x.shape
@@ -582,6 +584,22 @@ class MiniTrainDIT(nn.Module):
         is_image = x.ndim == 4
         if is_image:
             x = x.unsqueeze(2)
+
+        for ref in anima_reference.ref_latents:
+            if ref.ndim == 4:
+                ref = ref.unsqueeze(2)
+            if ref.shape[-2:] != x.shape[-2:]:
+                ref = F.interpolate(
+                    ref,
+                    size=(ref.shape[2], x.shape[-2], x.shape[-1]),
+                    mode="trilinear",
+                    align_corners=False,
+                )
+            ref = ref.to(device=x.device, dtype=x.dtype)
+            if ref.shape[0] == 1 and x.shape[0] > 1:
+                ref = ref.repeat(x.shape[0], *([1] * (ref.ndim - 1)))
+            x = torch.cat((x, ref), dim=2)
+
         x = pad_to_patch_size(x, (self.patch_temporal, self.patch_spatial, self.patch_spatial))
         x_B_C_T_H_W = x
         timesteps_B_T = timesteps

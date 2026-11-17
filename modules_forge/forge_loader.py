@@ -94,6 +94,7 @@ def load_anima_engine(checkpoint_info, state_dict=None):
     sd_model.encode_first_stage = engine.encode_first_stage
     sd_model.decode_first_stage = engine.decode_first_stage
     sd_model.get_learned_conditioning = engine.get_learned_conditioning
+    sd_model.clear_references = engine.clear_references
     sd_model.get_first_stage_encoding = lambda x: x
     sd_model.ema_scope = lambda *args, **kwargs: contextlib.nullcontext()
     class AnimaCondStageModel:

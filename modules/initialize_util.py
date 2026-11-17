@@ -178,6 +178,16 @@ def configure_opts_onchange():
     shared.opts.onchange("temp_dir", ui_tempdir.on_tmpdir_changed)
     shared.opts.onchange("gradio_theme", shared.reload_gradio_theme)
     shared.opts.onchange("cross_attention_optimization", wrap_queued_call(lambda: sd_hijack.model_hijack.redo_hijack(shared.sd_model)), call=False)
+
+    def clear_anima_references():
+        from modules_forge.anima_reference import reference
+
+        reference.clear()
+        model = getattr(shared, "sd_model", None)
+        if model is not None and hasattr(model, "clear_references"):
+            model.clear_references()
+
+    shared.opts.onchange("anima_do_reference", clear_anima_references, call=False)
     startup_timer.record("opts onchange")
 
 

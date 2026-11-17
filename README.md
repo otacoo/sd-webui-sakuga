@@ -1,7 +1,7 @@
 <h1 align="center">Stable Diffusion WebUI Sakuga</h1>
 
 <p align="center">
-  <b>An experimental fork of <a href="https://github.com/Haoming02/sd-webui-forge-classic">Haoming02's Forge Classic</a> with native Anima support.</b>
+  <b>A personal, experimental, fork of <a href="https://github.com/Haoming02/sd-webui-forge-classic">Haoming02's Forge Classic</a> with native Anima support.</b>
 </p>
 
 ## What is Sakuga?
@@ -16,16 +16,14 @@ It is intended for users who want a compact WebUI, fast startup, and Anima suppo
 
 ### Anima
 
-- Native Anima inference with flow matching
-- Load Anima from either:
-  - a single `.safetensors` checkpoint, or
-  - an `AnimaPipeline` diffusers directory
+- Native Anima inference
 - Qwen3-0.6B and T5 text processing, including prompt emphasis and `BREAK`
 - `ER SDE` sampler for flow-based models
 - 16-channel latent previews
 - ControlNet-LLLite adapter for Anima *(experimental)*
+- Anima Edit support: reference conditioning through img2img and the native ImageStitch panel *(requires an Anima Edit LoRA)*
+- Anima RGBA support: 4-channel VAE decode, transparent PNG saving, and native alpha-channel generation *(requires an Anima RGBA LoRA)*
 - Text encoder selection and VAE compatibility fallback
-- Bundled Qwen3 and T5 tokenizers — no separate tokenizer download required
 
 ### Forge Classic foundation
 
@@ -37,8 +35,6 @@ It is intended for users who want a compact WebUI, fast startup, and Anima suppo
 
 ### Sakuga UI and tooling
 
-- Compact prompt layout with the scheduler visible by default
-- `reilnuud/polite` Gradio theme and larger gallery/preview layout
 - Optional **Hide Styles** setting
 - Native **Enqueue** button for queueing prompts during generation, with placement and notification settings
 - Native **List all models** / **Unload Models** footer links
@@ -183,15 +179,29 @@ If `text_encoder/` is omitted, Sakuga uses `models/text_encoders/qwen_3_06b_base
 
 Anima is a 2B model, so 30-50 steps at 896x1152 takes time, and Hires. fix plus a 4x upscaler adds considerably more. For quick iteration, use **Anima-Turbo** at **CFG 1** with **8-12 steps**; use Anima-Aesthetic for final images.
 
+#### Anima Edit
+
+1. Put an Anima Edit LoRA in `models/loras/Anima/` and load it with a normal `<lora:...>` tag.
+2. Enable **Settings → Anima → [Anima] Enable Reference**.
+3. Use **img2img** with the reference image, or use the **ImageStitch Integrated** panel in txt2img/img2img to provide one or more references.
+4. Include the Edit LoRA's trigger words in the prompt.
+
+Anima Edit is reference conditioning, not a normal img2img denoise. Select the Edit LoRA trained for the effect you want.
+
+#### Anima RGBA
+
+1. Put `anima_rgba_vae.safetensors` in `models/vae/` and `anima_rgba_lora.safetensors` in `models/loras/Anima/`.
+2. Select the RGBA VAE in **Settings → VAE**, and load the RGBA LoRA at strength `1.0`.
+3. Add `transparent background` (or `isolated on a transparent background`) to the prompt.
+4. Save as PNG to keep the alpha channel. If the background stays opaque, raise the trigger weight (for example `(transparent background:1.3)`) rather than the LoRA strength.
+
 #### Anima prompting
 
 - Use Danbooru-style tags, natural-language captions, or a mix of both.
 - Prefix artist tags with `@`, for example `@club8` or `@takeda hiromitsu`. Without the `@`, artist tags have very little effect.
 - Place artist tags near the beginning of the prompt, after the quality/safety tags.
-- When testing artist styles, remove `artist name` from the negative prompt — it can suppress the style.
 - For **Anima-Aesthetic**, use CFG `3-5` and avoid `score_*` tags; the aesthetic version already produces high-quality images.
 - For **Anima-Turbo**, use CFG `1` and `8-12` steps.
-- **Anima-Base** has the strongest style and artist adherence. **Anima-Aesthetic** favors its own high-quality default style, and **Anima-Turbo** has an even stronger default style. If a style tag feels weak on Aesthetic, try the same prompt and seed with Base.
 - Live previews during sampling are approximate; the final image is decoded through the full VAE.
 
 ## Command-line options

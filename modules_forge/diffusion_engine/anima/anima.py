@@ -1,9 +1,25 @@
+import math
+
 import torch
 
 from ldm_patched.modules import model_management
 from modules import shared
+from modules.shared import opts
+from modules_forge.anima_reference import reference as anima_reference
 from modules_forge.forge_loader import ForgeObjects
 from modules_forge.text_processing.anima_engine import AnimaTextProcessingEngine
+
+
+def resize_reference(samples, multiple=16, resolution=0):
+    height, width = samples.shape[-2:]
+    scale = min(
+        (value / math.sqrt(width * height) for value in (resolution, getattr(opts, "reference_max_side", 1024)) if value > 0),
+        default=1.0,
+    )
+    size = tuple(max(multiple, round(side * scale / multiple) * multiple) for side in (height, width))
+    if size == (height, width):
+        return samples
+    return torch.nn.functional.interpolate(samples, size=size, mode="area")
 
 
 class VAEWrapper:
@@ -14,6 +30,16 @@ class VAEWrapper:
 
         self.first_stage_model = model.eval()
         self.is_3d = getattr(getattr(model, "encoder", None), "conv1", None) is not None and model.encoder.conv1.weight.ndim == 5
+
+        encoder_conv = getattr(getattr(model, "encoder", None), "conv1", None)
+        self.input_channels = getattr(encoder_conv, "in_channels", 3)
+
+        decoder_head = getattr(getattr(model, "decoder", None), "head", None)
+        if decoder_head is not None and len(decoder_head) > 2 and hasattr(decoder_head[2], "out_channels"):
+            self.output_channels = decoder_head[2].out_channels
+        else:
+            self.output_channels = getattr(getattr(model, "decoder", None), "conv_out", None)
+            self.output_channels = getattr(self.output_channels, "out_channels", 3)
 
         self.device = device or model_management.vae_device()
         offload_device = model_management.vae_offload_device()
@@ -60,6 +86,8 @@ class VAEWrapper:
             return self.encode_tiled(pixel_samples)
 
         _samples = pixel_samples.movedim(-1, 1)
+        if self.input_channels == 4 and _samples.shape[1] == 3:
+            _samples = torch.cat((_samples, torch.ones_like(_samples[:, :1])), dim=1)
 
         try:
             memory_used = self.memory_used_encode(_samples.shape, self.vae_dtype)
@@ -96,7 +124,10 @@ class VAEWrapper:
             raise ValueError(f"VAE encode expects 4D input (B, H, W, C), got {pixel_samples.shape}")
 
         model_management.load_model_gpu(self.patcher)
-        return self.encode_tiled_(pixel_samples.movedim(-1, 1))
+        _samples = pixel_samples.movedim(-1, 1)
+        if self.input_channels == 4 and _samples.shape[1] == 3:
+            _samples = torch.cat((_samples, torch.ones_like(_samples[:, :1])), dim=1)
+        return self.encode_tiled_(_samples)
 
     def encode_tiled_(self, pixel_samples, tile_x=0, tile_y=0, overlap=0):
         from ldm_patched.modules.utils import tiled_scale, ProgressBar, get_tiled_scale_steps
@@ -178,18 +209,21 @@ class VAEWrapper:
                     samples, decode_fn,
                     tile_x // 2, tile_y * 2, overlap,
                     upscale_amount=self.downscale_ratio,
+                    out_channels=self.output_channels,
                     output_device=self.output_device, pbar=pbar,
                 )
                 + tiled_scale(
                     samples, decode_fn,
                     tile_x * 2, tile_y // 2, overlap,
                     upscale_amount=self.downscale_ratio,
+                    out_channels=self.output_channels,
                     output_device=self.output_device, pbar=pbar,
                 )
                 + tiled_scale(
                     samples, decode_fn,
                     tile_x, tile_y, overlap,
                     upscale_amount=self.downscale_ratio,
+                    out_channels=self.output_channels,
                     output_device=self.output_device, pbar=pbar,
                 )
             ) / 6.0,
@@ -277,14 +311,38 @@ class AnimaEngine:
 
         self.is_wan = True
         self.use_shift = True
+        self.ref_latents = []
+        self.ini_latent = None
 
     @torch.inference_mode()
-    def get_learned_conditioning(self, prompt: list[str]):
+    def get_learned_conditioning(self, prompt):
         clip = self.forge_objects.clip
         model_management.load_model_gpu(clip.patcher)
         if self.text_processing_engine_anima.text_encoder is not clip.cond_stage_model:
             self.text_processing_engine_anima.text_encoder = clip.cond_stage_model
+
+        if not getattr(prompt, "is_negative_prompt", False):
+            if not getattr(opts, "anima_do_reference", False):
+                self.clear_references()
+            else:
+                refs = list(self.ref_latents)
+                if self.ini_latent is not None:
+                    refs.insert(0, self.ini_latent)
+                    self.ini_latent = None
+                anima_reference.ref_latents = refs
+
         return self.text_processing_engine_anima(prompt)
+
+    def clear_references(self):
+        self.ref_latents.clear()
+        self.ini_latent = None
+        anima_reference.clear()
+
+    def store_reference(self, latent):
+        if anima_reference.is_referencing:
+            self.ref_latents.append(latent)
+        else:
+            self.ini_latent = latent
 
     @torch.inference_mode()
     def get_prompt_lengths_on_ui(self, prompt):
@@ -293,6 +351,19 @@ class AnimaEngine:
 
     @torch.inference_mode()
     def encode_first_stage(self, x):
+        if not getattr(opts, "anima_do_reference", False):
+            return self._encode_first_stage(x)
+
+        reference = resize_reference(x[:1], multiple=16)
+        samples = self._encode_first_stage(x)
+        if reference.shape[-2:] == x.shape[-2:]:
+            latent = samples[:1].clone()
+        else:
+            latent = self._encode_first_stage(reference)
+        self.store_reference(latent.cpu())
+        return samples
+
+    def _encode_first_stage(self, x):
         samples = []
         batch = x.size(0)
         for b in range(batch):
