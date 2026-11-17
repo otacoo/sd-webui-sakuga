@@ -233,8 +233,7 @@
         var ir = p === 'left' ? '0.5rem 0 0 0.5rem' :
                  p === 'right' ? '0 0.5rem 0.5rem 0' : '0';
         btn.style.cssText = 'position:absolute;left:' + il + ';width:33.33%;height:100%;' +
-            'background:#b4c0cc;border-radius:' + ir + ';display:none;' +
-            'transition:var(--button-transition);box-shadow:var(--button-shadow);';
+            'border-radius:' + ir + ';display:none;';
 
         btn.addEventListener('click', function (e) {
             e.preventDefault();

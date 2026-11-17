@@ -323,7 +323,7 @@ input[type="checkbox"].input-accordion-checkbox {
     position: relative;
 }
 
-.gradio-button.generate-box-skip, .gradio-button.generate-box-interrupt, .gradio-button.generate-box-interrupting {
+.gradio-button.generate-box-skip, .gradio-button.generate-box-interrupt, .gradio-button.generate-box-interrupting, .gradio-button.generate-box-enqueue {
     position: absolute;
     width: 50%;
     height: 100%;
