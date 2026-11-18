@@ -104,6 +104,7 @@ class UserMetadataEditor:
 
             stats = os.stat(filename)
             params = [
+                ('Path: ', os.path.abspath(filename)),
                 ('Filename: ', self.relative_path(filename)),
                 ('File size: ', sysinfo.pretty_bytes(stats.st_size)),
                 ('Hash: ', shorthash),
@@ -124,7 +125,7 @@ class UserMetadataEditor:
             errors.display(e, f"reading metadata info for {name}")
             params = []
 
-        table = '<table class="file-metadata">' + "".join(f"<tr><th>{name}</th><td>{value}</td></tr>" for name, value in params if value is not None) + '</table>'
+        table = '<table class="file-metadata">' + "".join(f"<tr><th>{html.escape(str(name))}</th><td>{html.escape(str(value))}</td></tr>" for name, value in params if value is not None) + '</table>'
 
         return html.escape(name), user_metadata.get('description', ''), table, self.get_card_html(name), user_metadata.get('notes', '')
 
