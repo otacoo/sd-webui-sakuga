@@ -51,13 +51,16 @@ function setupExtraNetworksForTab(tabname) {
 
         let applyFilter = function (force) {
             let searchTerm = search.value.toLowerCase();
+            let activeDir = extraNetworksActiveDir[tabname_full] || "";
             gradioApp().querySelectorAll('#' + tabname + '_extra_tabs div.card').forEach(function (elem) {
                 let searchOnly = elem.querySelector('.search_only');
                 let text = Array.prototype.map.call(elem.querySelectorAll('.search_terms'), function (t) {
                     return t.textContent.toLowerCase();
                 }).join(" ");
+                let itemPath = (elem.dataset.path || "").replace(/\\/g, "/").toLowerCase();
+                let inDir = !activeDir || itemPath === activeDir || itemPath.startsWith(activeDir + "/");
 
-                let visible = text.indexOf(searchTerm) != -1;
+                let visible = inDir && text.indexOf(searchTerm) != -1;
                 if (searchOnly && searchTerm.length < 4) {
                     visible = false;
                 }
@@ -107,19 +110,12 @@ function setupExtraNetworksForTab(tabname) {
             });
         };
 
-        const dirKey = extraNetworksDirKey(extra_networks_tabname);
-        search.addEventListener("input", () => {
-            if (search.value !== localGet(dirKey, "")) {
-                localRemove(dirKey);
-            }
-            applyFilter();
-        });
+        search.addEventListener("input", () => { applyFilter(); });
+        extraNetworksRestoreDir(tabname, extra_networks_tabname);
         applySort();
         applyFilter();
         extraNetworksApplySort[tabname_full] = applySort;
         extraNetworksApplyFilter[tabname_full] = applyFilter;
-
-        extraNetworksRestoreDir(tabname, extra_networks_tabname);
 
         let controls = gradioApp().querySelector("#" + tabname_full + "_controls");
         controlsDiv.insertBefore(controls, null);
@@ -178,6 +174,7 @@ function extraNetworksTabSelected(tabname, id, showPrompt, showNegativePrompt, t
 
     extraNetworksShowControlsForPage(tabname, tabname_full);
     extraNetworksRestoreDir(tabname, tabname_full.slice(tabname.length + 1));
+    applyExtraNetworkFilter(tabname_full);
 }
 
 function applyExtraNetworkFilter(tabname_full) {
@@ -200,6 +197,7 @@ function applyExtraNetworkSort(tabname_full) {
 
 const extraNetworksApplyFilter = {};
 const extraNetworksApplySort = {};
+const extraNetworksActiveDir = {};
 const activePromptTextarea = {};
 
 function setupExtraNetworks() {
@@ -287,9 +285,14 @@ function extraNetworksDirKey(extra_networks_tabname) {
     return "extraNetworksDir_" + extra_networks_tabname;
 }
 
+function extraNetworksNormalizeDir(dir) {
+    return (dir || "").replace(/\\/g, "/").replace(/^\/+|\/+$/g, "").toLowerCase();
+}
+
 function extraNetworksMarkDirButton(tabname_full, dir) {
+    const target = extraNetworksNormalizeDir(dir);
     gradioApp().querySelectorAll("#" + tabname_full + "_dirs button").forEach(function (btn) {
-        btn.classList.toggle("extra-network-dir--selected", (btn.dataset.dir || "") === dir);
+        btn.classList.toggle("extra-network-dir--selected", extraNetworksNormalizeDir(btn.dataset.dir) === target);
     });
 }
 
@@ -299,23 +302,20 @@ function extraNetworksRestoreDir(tabname, extra_networks_tabname) {
     const savedDir = localGet(dirKey, null);
     const dirButtons = gradioApp().querySelectorAll("#" + tabname_full + "_dirs button");
 
+    extraNetworksActiveDir[tabname_full] = "";
+
     if (savedDir === null || dirButtons.length === 0) {
         return;
     }
 
-    const savedButton = Array.from(dirButtons).find(btn => (btn.dataset.dir || "") === savedDir);
+    const target = extraNetworksNormalizeDir(savedDir);
+    const savedButton = Array.from(dirButtons).find(btn => extraNetworksNormalizeDir(btn.dataset.dir) === target);
     if (!savedButton) {
         localRemove(dirKey);
         return;
     }
 
-    if (savedDir) {
-        const search = gradioApp().querySelector("#" + tabname_full + "_extra_search");
-        if (search) {
-            search.value = savedDir;
-            updateInput(search);
-        }
-    }
+    extraNetworksActiveDir[tabname_full] = target;
     extraNetworksMarkDirButton(tabname_full, savedDir);
 }
 
@@ -323,10 +323,10 @@ function extraNetworksSearchButton(tabname, extra_networks_tabname, event) {
     const tabname_full = tabname + "_" + extra_networks_tabname;
     const searchTextarea = gradioApp().querySelector("#" + tabname_full + "_extra_search");
     const button = event.currentTarget || event.target;
-    const text = button.classList.contains("search-all") ? "" : button.textContent.trim();
     const dir = button.dataset.dir || "";
 
-    searchTextarea.value = text;
+    extraNetworksActiveDir[tabname_full] = extraNetworksNormalizeDir(dir);
+    searchTextarea.value = "";
     updateInput(searchTextarea);
     localSet(extraNetworksDirKey(extra_networks_tabname), dir);
     extraNetworksMarkDirButton(tabname_full, dir);
@@ -603,9 +603,17 @@ function requestGet(url, data, handler, errorHandler) {
     xhr.send(js);
 }
 
-function extraNetworksCopyCardPath(event, path) {
-    navigator.clipboard.writeText(path);
+function extraNetworksOpenCardFile(event, page, path) {
     event.stopPropagation();
+    fetch("./sd_extra_networks/open-file?page=" + encodeURIComponent(page) + "&filename=" + encodeURIComponent(path))
+        .then(function (response) {
+            if (!response.ok) {
+                console.error("[extra networks] failed to open file", response.status);
+            }
+        })
+        .catch(function (error) {
+            console.error("[extra networks] failed to open file", error);
+        });
 }
 
 function extraNetworksRequestMetadata(event, extraPage, cardName) {

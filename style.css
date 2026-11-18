@@ -946,8 +946,8 @@ footer {
     color: white;
 }
 
-.extra-network-pane .copy-path-button::before {
-    content: "⎘";
+.extra-network-pane .open-file-button::before {
+    content: "\1F4C2";
 }
 
 .extra-network-pane .metadata-button::before {
@@ -1210,6 +1210,12 @@ body.resizing .resize-handle {
 
 .extra-network-pane .extra-network-dirs:not(:has(*)) {
     display: none;
+}
+
+.extra-network-pane .extra-network-dirs .extra-network-dirs-label {
+    align-self: center;
+    padding-right: 0.25em;
+    color: var(--body-text-color-subdued);
 }
 
 .extra-network-pane .extra-network-dirs button {

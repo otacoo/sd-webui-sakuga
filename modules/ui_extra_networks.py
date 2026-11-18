@@ -1,6 +1,8 @@
 import html
 import json
 import os.path
+import subprocess
+import sys
 import urllib.parse
 from dataclasses import dataclass
 from pathlib import Path
@@ -114,6 +116,31 @@ def fetch_file(filename: str = ""):
     return FileResponse(filename, headers={"Accept-Ranges": "bytes"})
 
 
+def open_file(page: str = "", filename: str = ""):
+    page_obj = next(iter([x for x in extra_pages if x.name == page]), None)
+    if page_obj is None:
+        raise HTTPException(status_code=404, detail="Page not found")
+    if not os.path.isfile(filename):
+        raise HTTPException(status_code=404, detail="File not found")
+
+    roots = page_obj.allowed_directories_for_previews()
+    if not any(Path(root).absolute() in Path(filename).absolute().parents for root in roots):
+        raise HTTPException(status_code=403, detail="File outside allowed directories")
+
+    filename = os.path.abspath(filename)
+    try:
+        if os.name == "nt":
+            subprocess.Popen(["explorer", "/select,", os.path.normpath(filename)])
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", "-R", filename])
+        else:
+            subprocess.Popen(["xdg-open", os.path.dirname(filename)])
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return {"status": "success"}
+
+
 def get_metadata(page: str = "", item: str = ""):
     from starlette.responses import JSONResponse
 
@@ -148,6 +175,7 @@ def get_single_card(page: str = "", tabname: str = "", name: str = ""):
 
 def add_pages_to_demo(app):
     app.add_api_route("/sd_extra_networks/thumb", fetch_file, methods=["GET"])
+    app.add_api_route("/sd_extra_networks/open-file", open_file, methods=["GET"])
     app.add_api_route("/sd_extra_networks/metadata", get_metadata, methods=["GET"])
     app.add_api_route("/sd_extra_networks/get-single-card", get_single_card, methods=["GET"])
 
@@ -173,7 +201,7 @@ class ExtraNetworksPage:
         self.pane_tpl = shared.html("extra-networks-pane.html")
         self.card_tpl = shared.html("extra-networks-card.html")
         self.btn_tree_tpl = shared.html("extra-networks-tree-button.html")
-        self.btn_copy_path_tpl = shared.html("extra-networks-copy-path-button.html")
+        self.btn_open_file_tpl = shared.html("extra-networks-open-file-button.html")
         self.btn_metadata_tpl = shared.html("extra-networks-metadata-button.html")
         self.btn_edit_item_tpl = shared.html("extra-networks-edit-item-button.html")
 
@@ -263,6 +291,8 @@ class ExtraNetworksPage:
                 local_path = filename[len(absdir) :]
                 break
 
+        item_path = local_path.replace("\\", "/").lstrip("/")
+
         # if this is true, the item must not be shown in the default view,
         # and must instead only be shown when searching for it
         if shared.opts.extra_networks_hidden_models == "Always":
@@ -293,7 +323,12 @@ class ExtraNetworksPage:
             )
             onclick = html.escape(onclick)
 
-        btn_copy_path = self.btn_copy_path_tpl.format(**{"filename": item["filename"]})
+        btn_open_file = self.btn_open_file_tpl.format(
+            **{
+                "extra_networks_tabname": self.extra_networks_tabname,
+                "filename": html.escape(quote_js(item["filename"]), quote=True),
+            }
+        )
         btn_metadata = ""
         metadata = item.get("metadata", None)
         if metadata is not None:
@@ -331,12 +366,13 @@ class ExtraNetworksPage:
         args = {
             "background_image": background_image,
             "card_clicked": onclick,
-            "copy_path_button": btn_copy_path,
+            "open_file_button": btn_open_file,
             "description": description,
             "edit_button": btn_edit_item,
             "local_preview": quote_js(item["local_preview"]),
             "metadata_button": btn_metadata,
             "name": html.escape(item["name"]),
+            "item_path": html.escape(item_path, quote=True),
             "prompt": item.get("prompt", None),
             "save_card_preview": html.escape(f"return saveCardPreview(event, '{tabname}', '{item['local_preview']}');"),
             "search_only": " search_only" if search_only else "",
@@ -398,7 +434,7 @@ class ExtraNetworksPage:
         item_html_args = self.create_item_html(tabname, item)
         action_buttons = "".join(
             [
-                item_html_args["copy_path_button"],
+                item_html_args["open_file_button"],
                 item_html_args["metadata_button"],
                 item_html_args["edit_button"],
             ]
@@ -539,14 +575,16 @@ class ExtraNetworksPage:
         if len(subdirs) > 0:
             subdirs = ("all", *sorted(subdirs, key=shared.natural_sort_key))
 
-        return "".join(
+        buttons = "".join(
             f"""
 <button class='lg secondary gradio-button custom-button {"search-all" if subdir == "all" else ""}' data-dir="{html.escape("" if subdir == "all" else subdir, quote=True)}" onclick='extraNetworksSearchButton("{tabname}", "{self.extra_networks_tabname}", event)'>
-{html.escape(subdir)}
+{html.escape("All" if subdir == "all" else subdir)}
 </button>
             """
             for subdir in subdirs
         )
+
+        return '<span class="extra-network-dirs-label">Folders:</span>' + buttons if buttons else ""
 
     def create_html(self, tabname, *, empty=False):
         """
