@@ -947,7 +947,7 @@ footer {
 }
 
 .extra-network-pane .open-file-button::before {
-    content: "\1F4C2";
+    content: "⎘";
 }
 
 .extra-network-pane .metadata-button::before {
