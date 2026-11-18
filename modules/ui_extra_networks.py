@@ -325,7 +325,7 @@ class ExtraNetworksPage:
 
         btn_open_file = self.btn_open_file_tpl.format(
             **{
-                "extra_networks_tabname": self.extra_networks_tabname,
+                "page_name": html.escape(quote_js(self.name), quote=True),
                 "filename": html.escape(quote_js(item["filename"]), quote=True),
             }
         )
