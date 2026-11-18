@@ -84,7 +84,7 @@ class ExtraNetworksPageLora(ExtraNetworksPage):
                 yield item
 
     def allowed_directories_for_previews(self):
-        return [shared.cmd_opts.lora_dir]
+        return networks.get_lora_dirs()
 
     def create_user_metadata_editor(self, ui, tabname):
         return LoraUserMetadataEditor(ui, tabname, self)

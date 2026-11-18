@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import torch
 
-from modules import extra_networks, hashes, paths, script_callbacks, sd_hijack, sd_models, sd_samplers_common, shared  # noqa
+from modules import extra_networks, hashes, model_paths, paths, script_callbacks, sd_hijack, sd_models, sd_samplers_common, shared  # noqa
 
 vae_path = os.path.abspath(os.path.join(paths.models_path, "VAE"))
 vae_ignore_keys = {"model_ema.decay", "model_ema.num_updates"}
@@ -72,14 +72,19 @@ def get_filename(filepath):
 def refresh_vae_list():
     vae_dict.clear()
 
-    paths = [
-        os.path.join(sd_models.model_path, "**/*.vae.ckpt"),
-        os.path.join(sd_models.model_path, "**/*.vae.pt"),
-        os.path.join(sd_models.model_path, "**/*.vae.safetensors"),
-        os.path.join(vae_path, "**/*.ckpt"),
-        os.path.join(vae_path, "**/*.pt"),
-        os.path.join(vae_path, "**/*.safetensors"),
-    ]
+    paths = []
+    for root in model_paths.checkpoint_dirs():
+        paths += [
+            os.path.join(root, "**/*.vae.ckpt"),
+            os.path.join(root, "**/*.vae.pt"),
+            os.path.join(root, "**/*.vae.safetensors"),
+        ]
+    for root in model_paths.vae_dirs():
+        paths += [
+            os.path.join(root, "**/*.ckpt"),
+            os.path.join(root, "**/*.pt"),
+            os.path.join(root, "**/*.safetensors"),
+        ]
 
     if shared.cmd_opts.ckpt_dir is not None and os.path.isdir(shared.cmd_opts.ckpt_dir):
         paths += [

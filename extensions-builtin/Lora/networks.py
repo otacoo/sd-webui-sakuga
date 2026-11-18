@@ -3,9 +3,13 @@ import re
 
 from ldm_patched.modules.sd import load_lora_for_models
 from ldm_patched.modules.utils import load_torch_file, state_dict_prefix_replace
-from modules import errors, scripts, sd_models, shared
+from modules import errors, model_paths, scripts, sd_models, shared
 
 import network
+
+
+def get_lora_dirs():
+    return model_paths.lora_dirs(shared.cmd_opts.lora_dir)
 
 
 def load_lora_state_dict(filename):
@@ -90,14 +94,16 @@ def list_available_networks():
     forbidden_network_aliases.clear()
     forbidden_network_aliases.update({"none": 1, "Addams": 1})
 
-    candidates = list(
-        shared.walk_files(
-            shared.cmd_opts.lora_dir,
-            allowed_extensions=[".pt", ".ckpt", ".safetensors"],
+    candidates = set()
+    for root in get_lora_dirs():
+        candidates.update(
+            shared.walk_files(
+                root,
+                allowed_extensions=[".pt", ".ckpt", ".safetensors"],
+            )
         )
-    )
 
-    for filename in candidates:
+    for filename in sorted(candidates):
         if os.path.isdir(filename):
             continue
 

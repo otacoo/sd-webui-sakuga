@@ -1,24 +1,26 @@
 import glob
 import os
 
-from modules import paths, shared
+from modules import model_paths, paths, shared
 
 te_path = os.path.abspath(os.path.join(paths.models_path, "text_encoders"))
 te_dict = {}
 
 
 def get_filename(filepath):
-    return os.path.relpath(filepath, te_path)
+    return model_paths.relative_to_any(filepath, model_paths.text_encoder_dirs()) or os.path.basename(filepath)
 
 
 def refresh_te_list():
     te_dict.clear()
 
-    paths_list = [
-        os.path.join(te_path, "**/*.ckpt"),
-        os.path.join(te_path, "**/*.pt"),
-        os.path.join(te_path, "**/*.safetensors"),
-    ]
+    paths_list = []
+    for root in model_paths.text_encoder_dirs():
+        paths_list += [
+            os.path.join(root, "**/*.ckpt"),
+            os.path.join(root, "**/*.pt"),
+            os.path.join(root, "**/*.safetensors"),
+        ]
 
     if shared.cmd_opts.ckpt_dir is not None and os.path.isdir(shared.cmd_opts.ckpt_dir):
         paths_list += [

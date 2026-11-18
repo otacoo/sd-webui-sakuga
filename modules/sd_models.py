@@ -9,10 +9,10 @@ import threading
 import safetensors.torch
 import torch
 from ldm_patched.modules import model_management
-from modules import cache, console, devices, errors, extra_networks, hashes, modelloader, paths, processing, script_callbacks, sd_vae, shared
+from modules import cache, console, devices, errors, extra_networks, hashes, model_paths, modelloader, paths, processing, script_callbacks, sd_vae, shared
 from modules.timer import Timer
 from modules_forge import forge_loader
-from modules_forge.forge_loader import is_anima_checkpoint, is_anima_file
+from modules_forge.forge_loader import is_anima_checkpoint, is_anima_file  # noqa: F401
 
 model_dir = "diffusion_models"
 model_path = os.path.abspath(os.path.join(paths.models_path, model_dir))
@@ -50,10 +50,8 @@ class CheckpointInfo:
 
         if abs_ckpt_dir and abspath.startswith(abs_ckpt_dir):
             name = abspath.replace(abs_ckpt_dir, "")
-        elif abspath.startswith(model_path):
-            name = abspath.replace(model_path, "")
         else:
-            name = os.path.basename(filename)
+            name = model_paths.relative_to_any(abspath, model_paths.checkpoint_dirs()) or os.path.basename(filename)
 
         if name.startswith("\\") or name.startswith("/"):
             name = name[1:]
@@ -151,12 +149,23 @@ def list_models():
 
     cmd_ckpt = shared.cmd_opts.ckpt
 
-    model_list = modelloader.load_models(model_path=model_path, command_path=shared.cmd_opts.ckpt_dir, ext_filter=[".ckpt", ".safetensors"], ext_blacklist=[".vae.ckpt", ".vae.safetensors"])
+    checkpoint_dirs = model_paths.checkpoint_dirs()
+    model_list = set()
+    for path in checkpoint_dirs:
+        found = modelloader.load_models(
+            model_path=path,
+            command_path=shared.cmd_opts.ckpt_dir if path == model_path else None,
+            ext_filter=[".ckpt", ".safetensors"],
+            ext_blacklist=[".vae.ckpt", ".vae.safetensors"],
+        )
+        model_list.update(found)
 
-    # Scan Anima diffusers directories one level below the model root
-    if os.path.isdir(model_path):
+    # Scan Anima diffusers directories one level below each model root
+    for path in checkpoint_dirs:
+        if not os.path.isdir(path):
+            continue
         try:
-            for entry in os.scandir(model_path):
+            for entry in os.scandir(path):
                 if not entry.is_dir():
                     continue
                 register_anima_diffusers(entry.path)
@@ -176,7 +185,7 @@ def list_models():
     elif cmd_ckpt is not None and cmd_ckpt != shared.default_sd_model_file:
         print(f"Checkpoint in --ckpt argument not found (Possible it was moved to {model_path}: {cmd_ckpt}", file=sys.stderr)
 
-    for filename in model_list:
+    for filename in sorted(model_list, key=lambda mdl: mdl.lower()):
         checkpoint_info = CheckpointInfo(filename)
         checkpoint_info.register()
 

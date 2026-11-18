@@ -1,7 +1,7 @@
 import html
 import os
 
-from modules import shared, ui_extra_networks, sd_models
+from modules import model_paths, shared, ui_extra_networks, sd_models
 from modules.ui_extra_networks_checkpoints_user_metadata import CheckpointUserMetadataEditor
 
 
@@ -45,7 +45,8 @@ class ExtraNetworksPageCheckpoints(ui_extra_networks.ExtraNetworksPage):
                 yield item
 
     def allowed_directories_for_previews(self):
-        return [v for v in [shared.cmd_opts.ckpt_dir, sd_models.model_path] if v is not None]
+        dirs = [shared.cmd_opts.ckpt_dir, *model_paths.checkpoint_dirs()]
+        return list(dict.fromkeys(v for v in dirs if v is not None))
 
     def create_user_metadata_editor(self, ui, tabname):
         return CheckpointUserMetadataEditor(ui, tabname, self)
