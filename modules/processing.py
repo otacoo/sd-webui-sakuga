@@ -194,6 +194,7 @@ class StableDiffusionProcessing:
     n_iter: int = 1
     steps: int = 50
     cfg_scale: float = 7.0
+    distilled_cfg_scale: float = 3.0
     width: int = 512
     height: int = 512
     tiling: bool = None
@@ -447,6 +448,15 @@ class StableDiffusionProcessing:
             return opts.s_min_uncond_hr or self.s_min_uncond or opts.s_min_uncond
         else:
             return self.s_min_uncond or opts.s_min_uncond
+
+    def apply_anima_shift(self):
+        if not getattr(self.sd_model, "is_anima", False):
+            self.extra_generation_params.pop("Shift", None)
+            return
+
+        shift = self.distilled_cfg_scale if getattr(opts, "anima_enable_shift", True) else 3.0
+        self.sd_model.set_shift(shift=shift)
+        self.extra_generation_params["Shift"] = shift
 
     def get_token_merging_ratio(self, *, for_hr: bool = False) -> float:
         if "token_merging_ratio" in self.override_settings:
@@ -1262,6 +1272,7 @@ class StableDiffusionProcessingTxt2Img(StableDiffusionProcessing):
 
     def sample(self, conditioning, unconditional_conditioning, seeds, subseeds, subseed_strength, prompts):
         self.sampler = sd_samplers.create_sampler(self.sampler_name, self.sd_model)
+        self.apply_anima_shift()
 
         if self.firstpass_image is not None and self.enable_hr:
             # here we don't need to generate image, we just take self.firstpass_image and prepare it for hires fix
@@ -1330,6 +1341,7 @@ class StableDiffusionProcessingTxt2Img(StableDiffusionProcessing):
             return samples
 
         self.is_hr_pass = True
+        self.apply_anima_shift()
         target_width = self.hr_upscale_to_x
         target_height = self.hr_upscale_to_y
 
@@ -1726,6 +1738,7 @@ class StableDiffusionProcessingImg2Img(StableDiffusionProcessing):
         self.image_conditioning = self.img2img_image_conditioning(image * 2 - 1, self.init_latent, image_mask, self.mask_round)
 
     def sample(self, conditioning, unconditional_conditioning, seeds, subseeds, subseed_strength, prompts):
+        self.apply_anima_shift()
         x = self.rng.next()
 
         if self.initial_noise_multiplier != 1.0:

@@ -12,7 +12,7 @@ from ldm_patched.modules import model_management
 from modules import cache, console, devices, errors, extra_networks, hashes, modelloader, paths, processing, script_callbacks, sd_vae, shared
 from modules.timer import Timer
 from modules_forge import forge_loader
-from modules_forge.forge_loader import is_anima_checkpoint
+from modules_forge.forge_loader import is_anima_checkpoint, is_anima_file
 
 model_dir = "diffusion_models"
 model_path = os.path.abspath(os.path.join(paths.models_path, model_dir))

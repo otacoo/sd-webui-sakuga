@@ -165,6 +165,18 @@ def apply_setting(key, value):
     return getattr(opts, key)
 
 
+def update_shift_visibility():
+    model = shared.sd_model
+    if model is not None:
+        is_anima = bool(getattr(model, "is_anima", False))
+    else:
+        checkpoint = sd_models.get_closet_checkpoint_match(shared.opts.sd_model_checkpoint)
+        is_anima = sd_models.is_anima_file(checkpoint)
+
+    visible = bool(getattr(shared.opts, "anima_enable_shift", True) and is_anima)
+    return gr.update(visible=visible), gr.update(visible=visible)
+
+
 def create_output_panel(tabname, outdir, toprow=None):
     return ui_common.create_output_panel(tabname, outdir, toprow)
 
@@ -247,6 +259,7 @@ def create_ui():
                     elif category == "cfg":
                         with gr.Row():
                             cfg_scale = gr.Slider(minimum=1.0, maximum=24.0, step=0.5, label="CFG Scale", value=6.0, elem_id="txt2img_cfg_scale", scale=4)
+                            txt2img_shift = gr.Slider(minimum=1.0, maximum=24.0, step=0.5, label="Shift", value=3.0, elem_id="txt2img_shift", visible=False, scale=4)
                             scripts.scripts_txt2img.setup_ui_for_section(category)
 
                     # elif category == "checkboxes":
@@ -337,6 +350,7 @@ def create_ui():
                 batch_count,
                 batch_size,
                 cfg_scale,
+                txt2img_shift,
                 height,
                 width,
                 enable_hr,
@@ -406,6 +420,7 @@ def create_ui():
                 PasteField(toprow.prompt, "Prompt", api="prompt"),
                 PasteField(toprow.negative_prompt, "Negative prompt", api="negative_prompt"),
                 PasteField(cfg_scale, "CFG scale", api="cfg_scale"),
+                PasteField(txt2img_shift, "Shift", api="distilled_cfg_scale"),
                 PasteField(width, "Size-1", api="width"),
                 PasteField(height, "Size-2", api="height"),
                 PasteField(batch_size, "Batch size", api="batch_size"),
@@ -614,6 +629,7 @@ def create_ui():
                     elif category == "cfg":
                         with gr.Row():
                             cfg_scale = gr.Slider(minimum=1.0, maximum=24.0, step=0.5, label="CFG Scale", value=6.0, elem_id="img2img_cfg_scale", scale=4)
+                            img2img_shift = gr.Slider(minimum=1.0, maximum=24.0, step=0.5, label="Shift", value=3.0, elem_id="img2img_shift", visible=False, scale=4)
                             scripts.scripts_img2img.setup_ui_for_section(category)
                         image_cfg_scale = gr.Slider(minimum=0, maximum=3.0, step=0.05, label="Image CFG Scale", value=1.5, elem_id="img2img_image_cfg_scale", visible=False)
 
@@ -704,6 +720,7 @@ def create_ui():
                     batch_count,
                     batch_size,
                     cfg_scale,
+                    img2img_shift,
                     image_cfg_scale,
                     denoising_strength,
                     selected_scale_tab,
@@ -770,6 +787,7 @@ def create_ui():
                 (toprow.prompt, "Prompt"),
                 (toprow.negative_prompt, "Negative prompt"),
                 (cfg_scale, "CFG scale"),
+                (img2img_shift, "Shift"),
                 (image_cfg_scale, "Image CFG scale"),
                 (width, "Size-1"),
                 (height, "Size-2"),
@@ -892,6 +910,9 @@ def create_ui():
         gr.HTML(footer, elem_id="footer")
 
         settings.add_functionality(demo)
+
+        settings.text_settings.change(fn=update_shift_visibility, inputs=[], outputs=[txt2img_shift, img2img_shift], queue=False, show_progress=False)
+        demo.load(fn=update_shift_visibility, inputs=[], outputs=[txt2img_shift, img2img_shift], queue=False, show_progress=False)
 
         update_image_cfg_scale_visibility = lambda: gr.update(visible=shared.sd_model and shared.sd_model.cond_stage_key == "edit")
         settings.text_settings.change(fn=update_image_cfg_scale_visibility, inputs=[], outputs=[image_cfg_scale])

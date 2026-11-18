@@ -271,6 +271,7 @@ class AnimaEngine:
         from modules_forge.unet_patcher import UnetPatcher
 
         k_predictor = PredictionDiscreteFlow(self.model_config)
+        self.k_predictor = k_predictor
 
         k_model = KModel(
             model=transformer,
@@ -332,6 +333,9 @@ class AnimaEngine:
                 anima_reference.ref_latents = refs
 
         return self.text_processing_engine_anima(prompt)
+
+    def set_shift(self, shift, *args, **kwargs):
+        self.k_predictor.set_parameters(shift=float(shift))
 
     def clear_references(self):
         self.ref_latents.clear()

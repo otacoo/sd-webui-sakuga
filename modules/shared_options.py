@@ -203,6 +203,7 @@ Anima is a text-to-image model based on NVIDIA Cosmos architecture with a Qwen3-
             ),
             "sd_text_encoder": OptionInfo("Automatic", "Text Encoder", gr.Dropdown, lambda: {"choices": shared_items.sd_text_encoder_items()}, refresh=shared_items.refresh_text_encoder_list).info("Anima text encoder; Automatic = use qwen_3_06b_base.safetensors from models/text_encoders/"),
             "anima_do_reference": OptionInfo(False, "[Anima] Enable Reference").info("Edit mode: use img2img and ImageStitch reference images as conditioning").info("requires an Anima Edit LoRA").info("pin to Quicksettings if changed often").needs_reload_ui(),
+            "anima_enable_shift": OptionInfo(True, "[Anima] Enable Shift").info("show the Shift slider; higher values increase generation variation"),
             "reference_max_side": OptionInfo(1024, "Maximum Side Length for Reference Images", gr.Slider, {"minimum": 0, "maximum": 2048, "step": 256}).info("applies to img2img and ImageStitch references; 0 = no limit"),
         },
     )

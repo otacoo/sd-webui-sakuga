@@ -1,6 +1,7 @@
 import contextlib
 import os
 
+import safetensors
 import torch
 from omegaconf import OmegaConf
 
@@ -35,16 +36,34 @@ def is_anima_checkpoint(checkpoint_info):
     return False
 
 
+ANIMA_MARKERS = (
+    "blocks.0.mlp.layer1.weight",
+    "x_embedder.proj.1.weight",
+    "llm_adapter.blocks.0.cross_attn.q_proj.weight",
+)
+
+
 def is_anima_state_dict(state_dict):
     if state_dict is None:
         return False
-    anima_markers = ("blocks.0.mlp.layer1.weight", "x_embedder.proj.1.weight",
-                     "llm_adapter.blocks.0.cross_attn.q_proj.weight")
-    for k in state_dict:
-        for marker in anima_markers:
-            if k.endswith(marker):
-                return True
-    return False
+    return any(k.endswith(marker) for k in state_dict for marker in ANIMA_MARKERS)
+
+
+def is_anima_file(checkpoint_info):
+    if checkpoint_info is None:
+        return False
+
+    filename = checkpoint_info.filename
+    if os.path.isdir(filename):
+        return is_anima_checkpoint(checkpoint_info)
+    if not filename.lower().endswith(".safetensors"):
+        return False
+
+    try:
+        with safetensors.safe_open(filename, framework="pt") as f:
+            return any(k.endswith(marker) for k in f.keys() for marker in ANIMA_MARKERS)
+    except Exception:
+        return False
 
 
 def load_anima_engine(checkpoint_info, state_dict=None):
@@ -94,6 +113,7 @@ def load_anima_engine(checkpoint_info, state_dict=None):
     sd_model.encode_first_stage = engine.encode_first_stage
     sd_model.decode_first_stage = engine.decode_first_stage
     sd_model.get_learned_conditioning = engine.get_learned_conditioning
+    sd_model.set_shift = engine.set_shift
     sd_model.clear_references = engine.clear_references
     sd_model.get_first_stage_encoding = lambda x: x
     sd_model.ema_scope = lambda *args, **kwargs: contextlib.nullcontext()
