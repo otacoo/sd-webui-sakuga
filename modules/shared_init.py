@@ -1,5 +1,3 @@
-import os
-
 from modules import shared
 
 
@@ -18,9 +16,6 @@ def initialize():
         shared.opts.load(shared.config_filename)
     except FileNotFoundError:
         pass
-
-    if not os.path.exists(shared.config_filename) and not shared.cmd_opts.freeze_settings:
-        shared.opts.save(shared.config_filename)
 
     from modules import devices
     shared.device = devices.device

@@ -70,6 +70,11 @@ if !errorlevel! == 1 (
     echo   Added --pin-shared-memory
 )
 
+:: Factory config is created by the installer, not by the application
+if not exist "%~dp0config.json" (
+    echo {}> "%~dp0config.json"
+)
+
 :: Write the updated start-webui.bat
 echo.
 echo Writing configuration to !NEW_BAT!...
