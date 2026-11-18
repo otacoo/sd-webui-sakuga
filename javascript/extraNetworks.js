@@ -38,6 +38,7 @@ function setupExtraNetworksForTab(tabname) {
     this_tab.querySelectorAll(":scope > [id^='" + tabname + "_']").forEach(function (elem) {
         // tabname_full = {tabname}_{extra_networks_tabname}
         let tabname_full = elem.id;
+        let extra_networks_tabname = tabname_full.slice(tabname.length + 1);
         let search = gradioApp().querySelector("#" + tabname_full + "_extra_search");
         let sort_mode = gradioApp().querySelector("#" + tabname_full + "_extra_sort");
         let sort_dir = gradioApp().querySelector("#" + tabname_full + "_extra_sort_dir");
@@ -106,11 +107,19 @@ function setupExtraNetworksForTab(tabname) {
             });
         };
 
-        search.addEventListener("input", () => { applyFilter(); });
+        const dirKey = extraNetworksDirKey(extra_networks_tabname);
+        search.addEventListener("input", () => {
+            if (search.value !== localGet(dirKey, "")) {
+                localRemove(dirKey);
+            }
+            applyFilter();
+        });
         applySort();
         applyFilter();
         extraNetworksApplySort[tabname_full] = applySort;
         extraNetworksApplyFilter[tabname_full] = applyFilter;
+
+        extraNetworksRestoreDir(tabname, extra_networks_tabname);
 
         let controls = gradioApp().querySelector("#" + tabname_full + "_controls");
         controlsDiv.insertBefore(controls, null);
@@ -168,6 +177,7 @@ function extraNetworksTabSelected(tabname, id, showPrompt, showNegativePrompt, t
     extraNetworksMovePromptToTab(tabname, id, showPrompt, showNegativePrompt);
 
     extraNetworksShowControlsForPage(tabname, tabname_full);
+    extraNetworksRestoreDir(tabname, tabname_full.slice(tabname.length + 1));
 }
 
 function applyExtraNetworkFilter(tabname_full) {
@@ -273,13 +283,53 @@ function saveCardPreview(event, tabname, filename) {
     event.preventDefault();
 }
 
+function extraNetworksDirKey(extra_networks_tabname) {
+    return "extraNetworksDir_" + extra_networks_tabname;
+}
+
+function extraNetworksMarkDirButton(tabname_full, dir) {
+    gradioApp().querySelectorAll("#" + tabname_full + "_dirs button").forEach(function (btn) {
+        btn.classList.toggle("extra-network-dir--selected", (btn.dataset.dir || "") === dir);
+    });
+}
+
+function extraNetworksRestoreDir(tabname, extra_networks_tabname) {
+    const tabname_full = tabname + "_" + extra_networks_tabname;
+    const dirKey = extraNetworksDirKey(extra_networks_tabname);
+    const savedDir = localGet(dirKey, null);
+    const dirButtons = gradioApp().querySelectorAll("#" + tabname_full + "_dirs button");
+
+    if (savedDir === null || dirButtons.length === 0) {
+        return;
+    }
+
+    const savedButton = Array.from(dirButtons).find(btn => (btn.dataset.dir || "") === savedDir);
+    if (!savedButton) {
+        localRemove(dirKey);
+        return;
+    }
+
+    if (savedDir) {
+        const search = gradioApp().querySelector("#" + tabname_full + "_extra_search");
+        if (search) {
+            search.value = savedDir;
+            updateInput(search);
+        }
+    }
+    extraNetworksMarkDirButton(tabname_full, savedDir);
+}
+
 function extraNetworksSearchButton(tabname, extra_networks_tabname, event) {
-    const searchTextarea = gradioApp().querySelector("#" + tabname + "_" + extra_networks_tabname + "_extra_search");
-    const button = event.target;
+    const tabname_full = tabname + "_" + extra_networks_tabname;
+    const searchTextarea = gradioApp().querySelector("#" + tabname_full + "_extra_search");
+    const button = event.currentTarget || event.target;
     const text = button.classList.contains("search-all") ? "" : button.textContent.trim();
+    const dir = button.dataset.dir || "";
 
     searchTextarea.value = text;
     updateInput(searchTextarea);
+    localSet(extraNetworksDirKey(extra_networks_tabname), dir);
+    extraNetworksMarkDirButton(tabname_full, dir);
 }
 
 function extraNetworksTreeProcessFileClick(event, btn, tabname, extra_networks_tabname) {

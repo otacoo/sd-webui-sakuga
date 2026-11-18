@@ -1218,6 +1218,11 @@ body.resizing .resize-handle {
     border: 1px solid var(--block-border-color);
 }
 
+.extra-network-pane .extra-network-dirs button.extra-network-dir--selected {
+    border-color: var(--color-accent);
+    background: var(--button-secondary-background-fill-hover);
+}
+
 .extra-network-pane .extra-network-tree .tree-list {
     flex: 1;
     display: flex;
