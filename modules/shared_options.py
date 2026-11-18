@@ -322,6 +322,7 @@ Enable it below to use the tree view.
             "extra_networks_tree_view_default_width": OptionInfo(180, "Default Width for the Tree View", gr.Number).info("in pixels").needs_reload_ui(),
             "div_tree": OptionDiv(),
             "extra_networks_dir_btn_enable": OptionInfo(True, "Enable the Subdirectory Buttons").needs_reload_ui(),
+            "extra_networks_hidden_subdirs": OptionInfo("", "Hidden Subdirectories").info("comma-separated subfolder names or paths to hide from Extra Networks").needs_reload_ui(),
             "extra_networks_hidden_models": OptionInfo("When searched", "Show the Extra Networks in hidden directories", gr.Radio, {"choices": ("Always", "When searched", "Never")}).info('"When searched" option will only show the item when the search string contains 4 characters or more'),
             "extra_networks_default_multiplier": OptionInfo(1.0, "Default Weight for Extra Networks", gr.Slider, {"minimum": 0.0, "maximum": 2.0, "step": 0.05}),
             "extra_networks_card_width": OptionInfo(0, "Card Width for Extra Networks").info("in pixels; 0 = auto"),

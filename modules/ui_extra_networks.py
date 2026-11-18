@@ -180,6 +180,43 @@ class ExtraNetworksPage:
     def refresh(self):
         pass
 
+    def get_hidden_subdirs(self):
+        value = getattr(shared.opts, "extra_networks_hidden_subdirs", "") or ""
+        return [x.strip().replace("\\", "/").strip("/").lower() for x in value.split(",") if x.strip()]
+
+    def is_hidden_subdir(self, subdir, hidden_dirs=None):
+        hidden_dirs = self.get_hidden_subdirs() if hidden_dirs is None else hidden_dirs
+        subdir = subdir.replace("\\", "/").strip("/").lower()
+        segments = subdir.split("/")
+
+        for entry in hidden_dirs:
+            if "/" in entry:
+                if subdir == entry or subdir.startswith(entry + "/"):
+                    return True
+            elif entry in segments:
+                return True
+
+        return False
+
+    def is_hidden_path(self, filename, hidden_dirs=None, roots=None):
+        if not filename:
+            return False
+
+        roots = roots if roots is not None else self.allowed_directories_for_previews()
+        abspath = os.path.abspath(filename)
+        for root in roots:
+            try:
+                relative = os.path.relpath(abspath, os.path.abspath(root))
+            except ValueError:
+                continue
+
+            if relative.startswith(".."):
+                continue
+            if self.is_hidden_subdir(relative, hidden_dirs):
+                return True
+
+        return False
+
     def read_user_metadata(self, item, use_cache=True):
         filename = item.get("filename", None)
         metadata = extra_networks.get_user_metadata(filename, lister=self.lister if use_cache else None)
@@ -470,6 +507,8 @@ class ExtraNetworksPage:
         """Generates HTML for the folder buttons"""
 
         subdirs: list[str] = []
+        seen: set[str] = set()
+        hidden_dirs = self.get_hidden_subdirs()
         roots = [os.path.abspath(x) for x in self.allowed_directories_for_previews()]
 
         for parentdir in roots:
@@ -488,7 +527,13 @@ class ExtraNetworksPage:
 
                     if subdir.startswith(".") and (not shared.opts.extra_networks_hidden_models == "Always"):
                         continue
+                    if self.is_hidden_subdir(subdir, hidden_dirs):
+                        continue
 
+                    key = os.path.normcase(subdir)
+                    if key in seen:
+                        continue
+                    seen.add(key)
                     subdirs.append(subdir)
 
         if len(subdirs) > 0:
@@ -496,7 +541,7 @@ class ExtraNetworksPage:
 
         return "".join(
             f"""
-<button class='lg secondary gradio-button custom-button {"search-all" if subdir == "all" else ""}' onclick='extraNetworksSearchButton("{tabname}", "{self.extra_networks_tabname}", event)'>
+<button class='lg secondary gradio-button custom-button {"search-all" if subdir == "all" else ""}' data-dir="{html.escape("" if subdir == "all" else subdir, quote=True)}" onclick='extraNetworksSearchButton("{tabname}", "{self.extra_networks_tabname}", event)'>
 {html.escape(subdir)}
 </button>
             """
@@ -519,7 +564,11 @@ class ExtraNetworksPage:
         self.lister.reset()
         self.metadata = {}
 
-        items_list = [] if empty else self.list_items()
+        items_list = [] if empty else list(self.list_items())
+        hidden_dirs = self.get_hidden_subdirs()
+        if hidden_dirs:
+            roots = self.allowed_directories_for_previews()
+            items_list = [x for x in items_list if not self.is_hidden_path(x.get("filename", ""), hidden_dirs, roots)]
         self.items = {x["name"]: x for x in items_list}
 
         # Populate the instance metadata for each item
@@ -691,7 +740,7 @@ def create_ui(interface: gr.Blocks, unrelated_tabs, tabname):
             return ui.pages_contents
 
         button_refresh = gr.Button("Refresh", elem_id=f"{tabname}_{page.extra_networks_tabname}_extra_refresh_internal", visible=False)
-        button_refresh.click(fn=refresh, inputs=[], outputs=ui.pages).then(fn=lambda: None, _js="function(){ " + f"applyExtraNetworkFilter('{tabname}_{page.extra_networks_tabname}');" + " }")
+        button_refresh.click(fn=refresh, inputs=[], outputs=ui.pages).then(fn=lambda: None, _js="function(){ " + f"extraNetworksRestoreDir('{tabname}', '{page.extra_networks_tabname}'); applyExtraNetworkFilter('{tabname}_{page.extra_networks_tabname}');" + " }")
 
     def create_html():
         ui.pages_contents = [pg.create_html(ui.tabname) for pg in ui.stored_extra_pages]
