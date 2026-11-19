@@ -99,6 +99,15 @@ function setupExtraNetworksForTab(tabname) {
 
             if (reverse) sortedCards.reverse();
 
+            let orderChanged = false;
+            for (let i = 0; i < sortedCards.length; i++) {
+                if (sortedCards[i].card !== cards[i]) {
+                    orderChanged = true;
+                    break;
+                }
+            }
+            if (!orderChanged) return;
+
             let parent = cards[0]?.parentElement;
             if (!parent) return;
 
@@ -115,8 +124,6 @@ function setupExtraNetworksForTab(tabname) {
             filterTimeout = setTimeout(() => applyFilter(), 150);
         });
         extraNetworksRestoreDir(tabname, extra_networks_tabname);
-        applySort(true);
-        applyFilter();
         extraNetworksApplySort[tabname_full] = applySort;
         extraNetworksApplyFilter[tabname_full] = applyFilter;
 
@@ -124,6 +131,7 @@ function setupExtraNetworksForTab(tabname) {
         controlsDiv.insertBefore(controls, null);
 
         if (elem.style.display != "none") {
+            applyFilter();
             extraNetworksShowControlsForPage(tabname, tabname_full);
         }
     });
@@ -677,8 +685,14 @@ function extraNetworksRefreshSingleCard(page, tabname, name) {
             card.parentElement.insertBefore(newCard, card);
             card.parentElement.removeChild(card);
 
-            let sortFunction = extraNetworksApplySort[tabname + "_" + pageKey];
-            if (sortFunction) sortFunction(true);
+            let tabKey = tabname + "_" + pageKey;
+            let filterFunction = extraNetworksApplyFilter[tabKey];
+            if (filterFunction) {
+                filterFunction(true);
+            } else {
+                let sortFunction = extraNetworksApplySort[tabKey];
+                if (sortFunction) sortFunction(true);
+            }
         }
     });
 }
