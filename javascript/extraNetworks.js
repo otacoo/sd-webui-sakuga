@@ -52,30 +52,28 @@ function setupExtraNetworksForTab(tabname) {
         let applyFilter = function (force) {
             let searchTerm = search.value.toLowerCase();
             let activeDir = extraNetworksActiveDir[tabname_full] || "";
-            gradioApp().querySelectorAll('#' + tabname + '_extra_tabs div.card').forEach(function (elem) {
-                let searchOnly = elem.querySelector('.search_only');
-                let text = Array.prototype.map.call(elem.querySelectorAll('.search_terms'), function (t) {
-                    return t.textContent.toLowerCase();
-                }).join(" ");
-                let itemPath = (elem.dataset.path || "").replace(/\\/g, "/").toLowerCase();
-                let inDir = !activeDir || itemPath === activeDir || itemPath.startsWith(activeDir + "/");
+            gradioApp().querySelectorAll('#' + tabname_full + '_cards > .card').forEach(function (elem) {
+                if (elem._searchText === undefined) {
+                    elem._searchText = Array.prototype.map.call(elem.querySelectorAll('.search_terms'), function (t) {
+                        return t.textContent.toLowerCase();
+                    }).join(" ");
+                    elem._searchOnly = !!elem.querySelector('.search_only');
+                    elem._searchPath = (elem.dataset.path || "").replace(/\\/g, "/").toLowerCase();
+                }
 
-                let visible = inDir && text.indexOf(searchTerm) != -1;
-                if (searchOnly && searchTerm.length < 4) {
+                let inDir = !activeDir || elem._searchPath === activeDir || elem._searchPath.startsWith(activeDir + "/");
+                let visible = inDir && elem._searchText.indexOf(searchTerm) != -1;
+                if (elem._searchOnly && searchTerm.length < 4) {
                     visible = false;
                 }
-                if (visible) {
-                    elem.classList.remove("hidden");
-                } else {
-                    elem.classList.add("hidden");
-                }
+                elem.classList.toggle("hidden", !visible);
             });
 
             applySort(force);
         };
 
         let applySort = function (force) {
-            let cards = gradioApp().querySelectorAll('#' + tabname + '_extra_tabs div.card');
+            let cards = gradioApp().querySelectorAll('#' + tabname_full + '_cards > .card');
             let reverse = sort_dir.dataset.sortdir == "Descending";
             let sortKey = sort_mode.dataset.sortmode.toLowerCase().replace("sort", "").replaceAll(" ", "_").replace(/_+$/, "").trim() || "name";
             sortKey = "sort" + sortKey.charAt(0).toUpperCase() + sortKey.slice(1);
@@ -86,33 +84,38 @@ function setupExtraNetworksForTab(tabname) {
 
             sort_mode.dataset.sortkey = sortKeyStore;
 
-            cards.forEach((card) => {
-                card.originalParentElement = card.parentElement;
+            let sortedCards = Array.from(cards, function (card) {
+                let value = card.dataset[sortKey] ?? "";
+                let number = parseInt(value);
+                return {card: card, value: value, number: isNaN(number) ? null : number};
             });
-            let sortedCards = Array.from(cards);
-            sortedCards.sort(function (cardA, cardB) {
-                let a = cardA.dataset[sortKey];
-                let b = cardB.dataset[sortKey];
-                if (!isNaN(a) && !isNaN(b)) {
-                    return parseInt(a) - parseInt(b);
+            sortedCards.sort(function (a, b) {
+                if (a.number !== null && b.number !== null) {
+                    return a.number - b.number;
                 }
 
-                return (a < b ? -1 : (a > b ? 1 : 0));
+                return (a.value < b.value ? -1 : (a.value > b.value ? 1 : 0));
             });
 
             if (reverse) sortedCards.reverse();
 
-            cards.forEach((card) => {
-                card.remove();
+            let parent = cards[0]?.parentElement;
+            if (!parent) return;
+
+            let fragment = document.createDocumentFragment();
+            sortedCards.forEach(function (item) {
+                fragment.appendChild(item.card);
             });
-            sortedCards.forEach((card) => {
-                card.originalParentElement.appendChild(card);
-            });
+            parent.appendChild(fragment);
         };
 
-        search.addEventListener("input", () => { applyFilter(); });
+        let filterTimeout = null;
+        search.addEventListener("input", () => {
+            clearTimeout(filterTimeout);
+            filterTimeout = setTimeout(() => applyFilter(), 150);
+        });
         extraNetworksRestoreDir(tabname, extra_networks_tabname);
-        applySort();
+        applySort(true);
         applyFilter();
         extraNetworksApplySort[tabname_full] = applySort;
         extraNetworksApplyFilter[tabname_full] = applyFilter;
@@ -182,7 +185,7 @@ function applyExtraNetworkFilter(tabname_full) {
         let applyFunction = extraNetworksApplyFilter[tabname_full];
 
         if (applyFunction) {
-            applyFunction(true);
+            applyFunction();
         }
     };
     setTimeout(doFilter, 1);
@@ -524,6 +527,9 @@ function extraNetworksControlRefreshOnClick(event, tabname, extra_networks_tabna
      * @param tabname                   The name of the active tab in the sd webui. Ex: txt2img, img2img, etc.
      * @param extra_networks_tabname    The id of the active extraNetworks tab. Ex: lora, checkpoints, etc.
      */
+    let sort = gradioApp().querySelector("#" + tabname + "_" + extra_networks_tabname + "_extra_sort");
+    if (sort) delete sort.dataset.sortkey;
+
     let btn_refresh_internal = gradioApp().getElementById(tabname + "_" + extra_networks_tabname + "_extra_refresh_internal");
     btn_refresh_internal.dispatchEvent(new Event("click"));
 }
