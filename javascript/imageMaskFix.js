@@ -1,18 +1,26 @@
 (function () {
     /** temporary fix for https://github.com/AUTOMATIC1111/stable-diffusion-webui/issues/668
      *  @see https://github.com/gradio-app/gradio/issues/1721 */
+    let resizeFrame = null;
+
     function imageMaskResize() {
+        const tab = gradioApp().getElementById('tab_img2img');
+        if (!tab || tab.style.display === 'none') return;
+
         const canvases = gradioApp().querySelectorAll('#img2maskimg .touch-none canvas');
-        if (!canvases.length) {
-            window.removeEventListener('resize', imageMaskResize);
-            return;
-        }
+        if (!canvases.length) return;
 
         const wrapper = canvases[0].closest('.touch-none');
         const previewImage = wrapper.previousElementSibling;
 
         if (!previewImage.complete) {
-            previewImage.addEventListener('load', imageMaskResize);
+            if (!previewImage._maskFixLoading) {
+                previewImage._maskFixLoading = true;
+                previewImage.addEventListener('load', function () {
+                    previewImage._maskFixLoading = false;
+                    imageMaskResize();
+                }, {once: true});
+            }
             return;
         }
 
@@ -20,6 +28,11 @@
         const h = previewImage.height;
         const nw = previewImage.naturalWidth;
         const nh = previewImage.naturalHeight;
+        const key = `${w}x${h}:${nw}x${nh}`;
+
+        if (wrapper._maskFixKey === key) return;
+        wrapper._maskFixKey = key;
+
         const portrait = nh > nw;
 
         const wW = Math.min(w, portrait ? h / nh * nw : w / nw * nw);
@@ -38,6 +51,14 @@
         });
     }
 
-    onAfterUiUpdate(imageMaskResize);
-    window.addEventListener('resize', imageMaskResize);
+    function scheduleImageMaskResize() {
+        if (resizeFrame) return;
+        resizeFrame = requestAnimationFrame(function () {
+            resizeFrame = null;
+            imageMaskResize();
+        });
+    }
+
+    onAfterUiUpdate(scheduleImageMaskResize);
+    window.addEventListener('resize', scheduleImageMaskResize);
 })();
