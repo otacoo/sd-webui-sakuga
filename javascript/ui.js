@@ -8,13 +8,10 @@ function set_theme(theme) {
 }
 
 function all_gallery_buttons() {
-    let allGalleryButtons = gradioApp().querySelectorAll('[style="display: block;"].tabitem div[id$=_gallery].gradio-gallery .thumbnails > .thumbnail-item.thumbnail-small');
-    let visibleGalleryButtons = [];
-    allGalleryButtons.forEach((elem) => {
-        if (elem.parentElement.offsetParent)
-            visibleGalleryButtons.push(elem);
-    });
-    return visibleGalleryButtons;
+    let content = get_uiCurrentTabContent();
+    if (!content) return [];
+
+    return Array.from(content.querySelectorAll('div[id$=_gallery].gradio-gallery .thumbnails > .thumbnail-item.thumbnail-small'));
 }
 
 function selected_gallery_button() {

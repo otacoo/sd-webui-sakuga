@@ -30,19 +30,20 @@ function negmod(n, m) {
 }
 
 function updateOnBackgroundChange() {
+    const modal = gradioApp().getElementById("lightboxModal");
     const modalImage = gradioApp().getElementById("modalImage");
-    if (modalImage && modalImage.offsetParent) {
-        let currentButton = selected_gallery_button();
-        let preview = gradioApp().querySelectorAll('.livePreview > img');
-        if (opts.js_live_preview_in_modal_lightbox && preview.length > 0) {
-            // show preview image if available
-            modalImage.src = preview[preview.length - 1].src;
-        } else if (currentButton?.children?.length > 0 && modalImage.src != currentButton.children[0].src) {
-            modalImage.src = currentButton.children[0].src;
-            if (modalImage.style.display === 'none') {
-                const modal = gradioApp().getElementById("lightboxModal");
-                modal.style.setProperty('background-image', `url(${modalImage.src})`);
-            }
+    if (!modal || !modalImage || modal.style.display !== 'flex') return;
+
+    let currentButton = selected_gallery_button();
+    let content = get_uiCurrentTabContent();
+    let preview = content ? content.querySelectorAll('.livePreview > img') : [];
+    if (opts.js_live_preview_in_modal_lightbox && preview.length > 0) {
+        // show preview image if available
+        modalImage.src = preview[preview.length - 1].src;
+    } else if (currentButton?.children?.length > 0 && modalImage.src != currentButton.children[0].src) {
+        modalImage.src = currentButton.children[0].src;
+        if (modalImage.style.display === 'none') {
+            modal.style.setProperty('background-image', `url(${modalImage.src})`);
         }
     }
 }
@@ -51,13 +52,8 @@ function modalImageSwitch(offset) {
     let galleryButtons = all_gallery_buttons();
 
     if (galleryButtons.length > 1) {
-        let currentButton = selected_gallery_button();
-
-        let result = -1;
-        galleryButtons.forEach(function (v, i) {
-            if (v == currentButton) {
-                result = i;
-            }
+        let result = galleryButtons.findIndex(function (button) {
+            return button.classList.contains('selected');
         });
 
         if (result != -1) {
@@ -179,10 +175,7 @@ function modalTileImageToggle(event) {
 }
 
 onAfterUiUpdate(function () {
-    let fullImg_preview = gradioApp().querySelectorAll('.gradio-gallery > div > img');
-    if (fullImg_preview != null) {
-        fullImg_preview.forEach(setupImageForLightbox);
-    }
+    gradioApp().querySelectorAll('.gradio-gallery > div > img').forEach(setupImageForLightbox);
     updateOnBackgroundChange();
 });
 

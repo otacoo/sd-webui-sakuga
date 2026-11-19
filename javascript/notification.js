@@ -4,6 +4,8 @@
 
     let notificationButton = null;
 
+    const resultIds = ['txt2img_results', 'img2img_results', 'extras_results'];
+
     onAfterUiUpdate(function () {
         if (notificationButton == null) {
             notificationButton = gradioApp().getElementById('request_notifications');
@@ -15,9 +17,16 @@
             }
         }
 
-        const galleryPreviews = gradioApp().querySelectorAll('div[id^="tab_"] div[id$="_results"] .thumbnail-item > img');
+        let galleryPreviews = [];
 
-        if (galleryPreviews == null) return;
+        for (const id of resultIds) {
+            const results = gradioApp().getElementById(id);
+            if (results) {
+                results.querySelectorAll('.thumbnail-item > img').forEach(img => galleryPreviews.push(img));
+            }
+        }
+
+        if (!galleryPreviews.length) return;
 
         const headImg = galleryPreviews[0]?.src;
 
