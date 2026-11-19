@@ -663,12 +663,11 @@ function extraNetworksEditUserMetadata(event, tabname, extraPage, cardName) {
 }
 
 function extraNetworksRefreshSingleCard(page, tabname, name) {
-    const refreshButton = document.getElementById(`${tabname}_${page}_extra_refresh`);
-    refreshButton.click();
+    let pageKey = page.replaceAll(" ", "_");
 
     requestGet("./sd_extra_networks/get-single-card", { page: page, tabname: tabname, name: name }, function (data) {
         if (data && data.html) {
-            let card = gradioApp().querySelector(`#${tabname}_${page.replace(" ", "_")}_cards > .card[data-name="${name}"]`);
+            let card = gradioApp().querySelector(`#${tabname}_${pageKey}_cards > .card[data-name="${name}"]`);
 
             let newDiv = document.createElement('DIV');
             newDiv.innerHTML = data.html;
@@ -677,6 +676,9 @@ function extraNetworksRefreshSingleCard(page, tabname, name) {
             newCard.style.display = '';
             card.parentElement.insertBefore(newCard, card);
             card.parentElement.removeChild(card);
+
+            let sortFunction = extraNetworksApplySort[tabname + "_" + pageKey];
+            if (sortFunction) sortFunction(true);
         }
     });
 }
