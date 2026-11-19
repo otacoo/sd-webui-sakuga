@@ -160,9 +160,9 @@
         var tabs = ['txt2img', 'img2img'];
         for (var i = 0; i < tabs.length; i++) {
             var ib = root.getElementById(tabs[i] + '_interrupt');
-            if (ib && ib.style.display !== 'none') return true;
+            if (ib && ib.style.display === 'block') return true;
             var ing = root.getElementById(tabs[i] + '_interrupting');
-            if (ing && ing.style.display !== 'none') return true;
+            if (ing && ing.style.display === 'block') return true;
         }
         return false;
     }
@@ -307,9 +307,9 @@
             if (state === lastLayoutState) return;
             lastLayoutState = state;
 
-            var interruptVisible = interruptBtn.style.display !== 'none';
-            var interruptingVisible = interruptingBtn && interruptingBtn.style.display !== 'none';
-            var skipVisible = skipBtn.style.display !== 'none';
+            var interruptVisible = interruptBtn.style.display === 'block';
+            var interruptingVisible = interruptingBtn && interruptingBtn.style.display === 'block';
+            var skipVisible = skipBtn.style.display === 'block';
             var isGen = interruptVisible || interruptingVisible;
 
             if (isGen) {
