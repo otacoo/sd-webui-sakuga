@@ -3,9 +3,19 @@
 
     var isProcessing = false;
     var enqueueButtons = [];
+    var queueSize = 1;
+    var pollTimer = null;
 
     function opt(name, def) {
         return (typeof opts !== 'undefined' && opts[name] !== undefined) ? opts[name] : def;
+    }
+
+    function optionsLoaded() {
+        return typeof opts !== 'undefined' && opts.sakuga_enable_enqueue !== undefined;
+    }
+
+    function enqueueEnabled() {
+        return typeof opts === 'undefined' || opts.sakuga_enable_enqueue !== false;
     }
 
     function orderFor(placement) {
@@ -15,6 +25,7 @@
     }
 
     function updateAllButtons(count) {
+        queueSize = count || 0;
         for (var i = 0; i < enqueueButtons.length; i++) {
             enqueueButtons[i].textContent = count > 0 ? 'Enqueue (' + count + ')' : 'Enqueue';
         }
@@ -149,9 +160,9 @@
         var tabs = ['txt2img', 'img2img'];
         for (var i = 0; i < tabs.length; i++) {
             var ib = root.getElementById(tabs[i] + '_interrupt');
-            if (ib && window.getComputedStyle(ib).display !== 'none') return true;
+            if (ib && ib.style.display !== 'none') return true;
             var ing = root.getElementById(tabs[i] + '_interrupting');
-            if (ing && window.getComputedStyle(ing).display !== 'none') return true;
+            if (ing && ing.style.display !== 'none') return true;
         }
         return false;
     }
@@ -173,6 +184,7 @@
                 var params = job.params || job;
                 delete params.tab;
                 updateAllButtons(data.queue_size || 0);
+                scheduleCheckAndProcess(1000);
 
                 populateUI(tab, params);
 
@@ -203,13 +215,29 @@
             });
     }
 
+    function scheduleCheckAndProcess(delay) {
+        clearTimeout(pollTimer);
+        pollTimer = setTimeout(checkAndProcess, delay);
+    }
+
     function checkAndProcess() {
-        if (!isGenerating()) {
-            processNextJob();
+        if (!optionsLoaded()) {
+            scheduleCheckAndProcess(1000);
+            return;
         }
+        if (!enqueueEnabled()) return;
+        if (isGenerating()) {
+            scheduleCheckAndProcess(1000);
+            return;
+        }
+        processNextJob();
+        scheduleCheckAndProcess(queueSize > 0 ? 1000 : 5000);
     }
 
     function setupEnqueueButton(tab) {
+        if (!optionsLoaded()) return false;
+        if (!enqueueEnabled()) return true;
+
         var root = typeof gradioApp === 'function' ? gradioApp() : document;
         var box = root.getElementById(tab + '_generate_box');
         if (!box) return false;
@@ -249,6 +277,8 @@
             .then(function (data) {
                 if (data.status === 'queued') {
                     btn.textContent = 'Queued!';
+                    queueSize = data.queue_size || queueSize + 1;
+                    scheduleCheckAndProcess(0);
                     if (opt('sakuga_enqueue_notifications', true)) {
                         notify('Prompt queued.');
                     }
@@ -265,10 +295,21 @@
         box.insertBefore(btn, interruptBtn);
         enqueueButtons.push(btn);
 
+        var lastLayoutState = null;
+
         function adjustLayout() {
-            var interruptVisible = window.getComputedStyle(interruptBtn).display !== 'none';
-            var interruptingVisible = interruptingBtn && window.getComputedStyle(interruptingBtn).display !== 'none';
-            var skipVisible = window.getComputedStyle(skipBtn).display !== 'none';
+            var state = [
+                interruptBtn.style.display,
+                skipBtn.style.display,
+                interruptingBtn ? interruptingBtn.style.display : '',
+                opt('sakuga_enqueue_placement', 'right')
+            ].join('|');
+            if (state === lastLayoutState) return;
+            lastLayoutState = state;
+
+            var interruptVisible = interruptBtn.style.display !== 'none';
+            var interruptingVisible = interruptingBtn && interruptingBtn.style.display !== 'none';
+            var skipVisible = skipBtn.style.display !== 'none';
             var isGen = interruptVisible || interruptingVisible;
 
             if (isGen) {
@@ -333,5 +374,5 @@
 
     setTimeout(function () { clearInterval(interval); }, 60000);
 
-    setInterval(checkAndProcess, 1000);
+    scheduleCheckAndProcess(1000);
 })();
