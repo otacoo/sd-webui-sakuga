@@ -46,34 +46,13 @@ function updateTooltip(element) {
     if (field != null) field.title = tooltip;
 }
 
-const tooltipCheckNodes = new Set();
-let tooltipCheckTimer = null;
-
-function processTooltipCheckNodes() {
-    for (const node of tooltipCheckNodes)
-        updateTooltip(node);
-    tooltipCheckNodes.clear();
-}
-
-onUiUpdate(function (mutationRecords) {
-    for (const record of mutationRecords) {
-        for (const node of record.addedNodes) {
-            if (node.nodeType === Node.ELEMENT_NODE && !node.classList.contains("hide")) {
-                if (!node.title) {
-                    if (["SPAN", "BUTTON", "P"].includes(node.tagName))
-                        tooltipCheckNodes.add(node);
-                }
-                node.querySelectorAll('span, button, p').forEach((n) => tooltipCheckNodes.add(n));
-            }
-        }
-    }
-    if (tooltipCheckNodes.size) {
-        clearTimeout(tooltipCheckTimer);
-        tooltipCheckTimer = setTimeout(processTooltipCheckNodes, 1000);
-    }
-});
-
 onUiLoaded(() => {
+    gradioApp().addEventListener('pointerover', (event) => {
+        const element = event.target.closest('span, button, p');
+        if (!element || element.classList.contains('hide')) return;
+        updateTooltip(element);
+    });
+
     for (const comp of window.gradio_config.components) {
         if (comp.props.webui_tooltip && comp.props.elem_id) {
             const elem = gradioApp().getElementById(comp.props.elem_id);
