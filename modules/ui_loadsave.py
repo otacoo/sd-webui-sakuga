@@ -6,6 +6,16 @@ import gradio as gr
 from modules import errors
 from modules.ui_components import ToolButton, InputAccordion
 
+MAX_RESOLUTION = 4096  # 4096x4096 = 16 MP
+RESOLUTION_SLIDER_IDS = {
+    "txt2img_width",
+    "txt2img_height",
+    "img2img_width",
+    "img2img_height",
+    "txt2img_hr_resize_x",
+    "txt2img_hr_resize_y",
+}
+
 
 def radio_choices(comp):  # gradio 3.41 changes choices from list of values to list of pairs
     return [x[0] if isinstance(x, tuple) else x for x in getattr(comp, 'choices', [])]
@@ -70,6 +80,10 @@ class UiLoadsave:
                         saved_value = float(saved_value)
                     except ValueError:
                         return
+
+                if field == 'maximum' and getattr(obj, 'elem_id', None) in RESOLUTION_SLIDER_IDS:
+                    saved_value = min(max(saved_value, getattr(obj, 'maximum')), MAX_RESOLUTION)
+                    self.ui_settings[key] = saved_value
 
                 setattr(obj, field, saved_value)
                 if init_field is not None:
