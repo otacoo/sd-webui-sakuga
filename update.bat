@@ -20,10 +20,7 @@ for /f "delims=" %%f in ('git diff --name-only "HEAD..@{u}"') do (
     )
 )
 
-git reset --hard
-if errorlevel 1 goto failed
-
-git pull
+git reset --hard "@{u}"
 if errorlevel 1 goto failed
 
 echo.
