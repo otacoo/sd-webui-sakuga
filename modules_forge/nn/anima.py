@@ -120,11 +120,14 @@ def ck_attention_op(q_B_S_H_D: torch.Tensor, k_B_S_H_D: torch.Tensor, v_B_S_H_D:
     # Comfy-Kitchen expects [batch, heads, sequence, head_dim].
     from comfy_kitchen import int8_attention
 
-    return int8_attention(
-        q_B_S_H_D.transpose(1, 2),
-        k_B_S_H_D.transpose(1, 2),
-        v_B_S_H_D.transpose(1, 2),
-    )
+    q_shape = q_B_S_H_D.shape
+    k_shape = k_B_S_H_D.shape
+    v_shape = v_B_S_H_D.shape
+
+    q = q_B_S_H_D.reshape(q_shape[0], -1, q_shape[-2], q_shape[-1]).transpose(1, 2)
+    k = k_B_S_H_D.reshape(k_shape[0], -1, k_shape[-2], k_shape[-1]).transpose(1, 2)
+    v = v_B_S_H_D.reshape(v_shape[0], -1, v_shape[-2], v_shape[-1]).transpose(1, 2)
+    return int8_attention(q, k, v)
 
 
 class SelfCrossAttention(nn.Module):
