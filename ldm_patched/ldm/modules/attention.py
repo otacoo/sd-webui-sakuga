@@ -302,6 +302,9 @@ else:
     attention_name = "basic"
     optimized_attention = attention_basic
 
+if model_management.ck_enabled():
+    attention_name = f"{attention_name} | Anima: Comfy-Kitchen INT8"
+
 console.kv("Attention", attention_name)
 
 optimized_attention_masked = optimized_attention

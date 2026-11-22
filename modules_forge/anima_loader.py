@@ -242,7 +242,7 @@ def load_anima_transformer(state_dict):
     if model_management.ck_enabled():
         from modules_forge.nn.anima import ck_attention_op
 
-        print("Anima attention: Comfy-Kitchen INT8")
+        print("  Anima attention: Comfy-Kitchen INT8")
         for module in transformer.modules():
             if hasattr(module, "attn_op"):
                 module.attn_op = ck_attention_op
