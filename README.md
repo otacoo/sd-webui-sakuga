@@ -42,7 +42,6 @@ It is intended for users who want a compact WebUI, fast startup, and Anima suppo
 - Native **Transparent Background** postprocessing in Extras (Lucida; optional Inspyrenet Rembg)
 - Drag-over top tabs to open a tab while dragging files
 - Modernized startup console with a compact banner and aligned environment/model rows
-- Startup colors respect `NO_COLOR` and `FORCE_COLOR`, and are disabled automatically when output is redirected
 - Live previews in the full-page image viewer
 - Windows `install.bat`, `start-webui.bat`, and `update.bat` helpers
 
@@ -216,13 +215,6 @@ Anima Edit is reference conditioning, not a normal img2img denoise. Select the E
 
 Memory-related flags can cause instability or out-of-memory errors on some systems. Disable them if you run into trouble.
 
-For Anima, add:
-
-```bat
-start-webui.bat --use-ck-attention
-```
-
-`--use-ck-attention` only applies to Anima on NVIDIA GPUs with compute capability 7.5 or newer. It is not available on AMD, Intel, Apple, or CPU-only systems, where Sakuga falls back to PyTorch SDPA. The gain is small at 1024px and grows at 1536px and above. INT8 attention is approximate, so compare outputs if you need exact parity.
 
 ## Updating
 
@@ -231,8 +223,6 @@ Run:
 ```bat
 update.bat
 ```
-
-This performs `git reset --hard` followed by `git pull`. **It discards tracked local modifications.** If you have edited the code, commit or back up your changes first, or update manually:
 
 ```bash
 git pull
