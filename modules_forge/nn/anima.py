@@ -116,6 +116,17 @@ def torch_attention_op(q_B_S_H_D: torch.Tensor, k_B_S_H_D: torch.Tensor, v_B_S_H
     return F.scaled_dot_product_attention(q_B_H_S_D, k_B_H_S_D, v_B_H_S_D)
 
 
+def ck_attention_op(q_B_S_H_D: torch.Tensor, k_B_S_H_D: torch.Tensor, v_B_S_H_D: torch.Tensor, transformer_options: Optional[dict] = {}) -> torch.Tensor:
+    # Comfy-Kitchen expects [batch, heads, sequence, head_dim].
+    from comfy_kitchen import int8_attention
+
+    return int8_attention(
+        q_B_S_H_D.transpose(1, 2),
+        k_B_S_H_D.transpose(1, 2),
+        v_B_S_H_D.transpose(1, 2),
+    )
+
+
 class SelfCrossAttention(nn.Module):
 
     def __init__(self, query_dim: int, context_dim: Optional[int] = None, n_heads: int = 8, head_dim: int = 64, dropout: float = 0.0):

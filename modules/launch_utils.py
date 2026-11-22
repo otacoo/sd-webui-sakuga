@@ -407,6 +407,7 @@ def prepare_environment():
     ver_PY = f"cp{sys.version_info.major}{sys.version_info.minor}"
     ver_SAGE = "2.2.0"
     ver_FLASH = "2.8.3"
+    ver_CK = "0.2.41"
     ver_TRITON = "3.6.0"
     ver_TORCH, ver_CUDA = _torch_version()
     v_TORCH = ver_TORCH.rsplit(".", 1)[0]
@@ -450,6 +451,14 @@ def prepare_environment():
             print("Failed to install flash_attn; Please manually install it")
         else:
             startup_timer.record("install flash_attn")
+
+    if args.use_ck_attention and not is_installed("comfy-kitchen"):
+        try:
+            run_pip(f"install comfy-kitchen=={ver_CK}", "comfy-kitchen")
+        except RuntimeError:
+            print("Failed to install comfy-kitchen; Please manually install it")
+        else:
+            startup_timer.record("install comfy-kitchen")
 
     if args.ngrok and not is_installed("ngrok"):
         run_pip("install ngrok", "ngrok")

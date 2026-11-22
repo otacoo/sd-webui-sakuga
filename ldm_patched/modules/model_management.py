@@ -233,12 +233,23 @@ def is_nvidia():
     return False
 
 
+CK_IS_AVAILABLE = False
+if args.use_ck_attention and is_nvidia():
+    try:
+        import comfy_kitchen
+
+        CK_IS_AVAILABLE = comfy_kitchen.int8_attention_is_available()
+    except Exception as e:
+        print(f"Comfy-Kitchen attention unavailable: {e}")
+
+
 ENABLE_PYTORCH_ATTENTION = False
 if args.attention_pytorch:
     ENABLE_PYTORCH_ATTENTION = True
     SAGE_IS_AVAILABLE = False
     FLASH_IS_AVAILABLE = False
     XFORMERS_IS_AVAILABLE = False
+    CK_IS_AVAILABLE = False
 
 VAE_DTYPE = torch.float32
 
@@ -817,6 +828,14 @@ def sage_enabled():
     if not is_nvidia():
         return False
     return SAGE_IS_AVAILABLE
+
+
+def ck_enabled():
+    if cpu_state != CPUState.GPU:
+        return False
+    if not is_nvidia():
+        return False
+    return CK_IS_AVAILABLE
 
 
 def flash_enabled():

@@ -239,6 +239,14 @@ def load_anima_transformer(state_dict):
     for param in transformer.parameters():
         param.requires_grad = False
 
+    if model_management.ck_enabled():
+        from modules_forge.nn.anima import ck_attention_op
+
+        print("Anima attention: Comfy-Kitchen INT8")
+        for module in transformer.modules():
+            if hasattr(module, "attn_op"):
+                module.attn_op = ck_attention_op
+
     transformer.storage_dtype = dtype
     transformer.computation_dtype = dtype
     transformer.load_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

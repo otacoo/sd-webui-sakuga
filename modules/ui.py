@@ -926,7 +926,7 @@ def create_ui():
 
 
 def versions_html():
-    from ldm_patched.modules.model_management import sage_enabled, flash_enabled, xformers_enabled
+    from ldm_patched.modules.model_management import sage_enabled, flash_enabled, xformers_enabled, ck_enabled
     import importlib.metadata
     import torch
 
@@ -939,6 +939,8 @@ def versions_html():
         _versions.append(f"flash: {importlib.metadata.version('flash_attn')}")
     if xformers_enabled():
         _versions.append(f"xformers: {importlib.metadata.version('xformers')}")
+    if ck_enabled():
+        _versions.append(f"ck: {importlib.metadata.version('comfy-kitchen')}")
 
     return f"""
 version: <a href="https://github.com/otacoo/sd-webui-sakuga">sakuga</a>

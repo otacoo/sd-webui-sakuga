@@ -73,6 +73,7 @@ parser.add_argument("--disable-sage", action="store_true")
 parser.add_argument("--disable-flash", action="store_true")
 parser.add_argument("--disable-xformers", action="store_true")
 parser.add_argument("--attention-pytorch", action="store_true")
+parser.add_argument("--use-ck-attention", action="store_true")
 
 parser.add_argument("--always-offload-from-vram", action="store_true")
 parser.add_argument("--pytorch-deterministic", action="store_true")
