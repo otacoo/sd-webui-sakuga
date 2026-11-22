@@ -3,7 +3,7 @@ import json
 import torch
 import safetensors.torch
 
-from modules import paths
+from modules import console, paths
 
 
 MODELS_DIR = os.path.abspath(paths.models_path)
@@ -88,7 +88,7 @@ def _load_safetensors_sd(filepath):
     return sd
 
 
-def load_state_dict_strict(model, sd, log_name=None, ignore_start=None):
+def load_state_dict_strict(model, sd, log_name=None, ignore_start=None, label=None):
     log_name = log_name or type(model).__name__
     model_sd = model.state_dict()
     missing = list(model_sd.keys() - sd.keys())
@@ -100,7 +100,7 @@ def load_state_dict_strict(model, sd, log_name=None, ignore_start=None):
             model_sd[k].copy_(sd[k])
             loaded += 1
         elif k in model_sd:
-            print(f"  {log_name} size mismatch {k}: checkpoint {tuple(sd[k].shape)} vs model {tuple(model_sd[k].shape)}")
+            console.warn(f"{log_name} size mismatch {k}: checkpoint {tuple(sd[k].shape)} vs model {tuple(model_sd[k].shape)}")
             mismatched += 1
     if isinstance(ignore_start, str):
         missing = [x for x in missing if not x.startswith(ignore_start)]
@@ -108,11 +108,14 @@ def load_state_dict_strict(model, sd, log_name=None, ignore_start=None):
     elif ignore_start:
         missing = [x for x in missing if x not in ignore_start]
         unexpected = [x for x in unexpected if x not in ignore_start]
-    print(f"  {log_name}: loaded {loaded} keys, {mismatched} mismatched, {len(missing)} missing, {len(unexpected)} unexpected")
+    summary = f"{loaded} keys loaded"
+    if mismatched or missing or unexpected:
+        summary += f" ({mismatched} mismatched, {len(missing)} missing, {len(unexpected)} unexpected)"
+    console.kv(label or log_name, summary, width=20, indent=4)
     if mismatched > 0:
-        print(f"    !! SIZE MISMATCHES in {log_name}")
+        console.warn(f"SIZE MISMATCHES in {log_name}")
     if len(unexpected) > 0:
-        print(f"    !! UNEXPECTED keys in {log_name}: {unexpected[:5]}{'...' if len(unexpected) > 5 else ''}")
+        console.warn(f"UNEXPECTED keys in {log_name}: {unexpected[:5]}{'...' if len(unexpected) > 5 else ''}")
 
 
 def load_anima_vae(filepath=None):
@@ -126,7 +129,7 @@ def load_anima_vae(filepath=None):
             f"Please place the Anima VAE weights file in the VAE models folder."
         )
 
-    print(f"Loading Anima VAE: {filepath}")
+    console.kv("VAE", os.path.basename(filepath), width=20, indent=4)
     vae_sd = _load_safetensors_sd(filepath)
 
     has_5d = any(v.dim() == 5 for v in vae_sd.values())
@@ -138,7 +141,7 @@ def load_anima_vae(filepath=None):
         image_channels = encoder_conv.shape[1] if encoder_conv is not None and encoder_conv.dim() == 5 else 3
         conv_out_channels = decoder_conv.shape[0] if decoder_conv is not None and decoder_conv.dim() == 5 else 3
 
-        print(f"  Loading native 3D (temporal) VAE ({image_channels}ch in / {conv_out_channels}ch out)")
+        console.kv("VAE type", f"3D temporal ({image_channels}ch in / {conv_out_channels}ch out)", width=20, indent=4)
         vae = WanVAE(
             base_dim=96,
             z_dim=16,
@@ -150,7 +153,7 @@ def load_anima_vae(filepath=None):
             conv_out_channels=conv_out_channels,
             dropout=0.0,
         )
-        load_state_dict_strict(vae, vae_sd, log_name="Anima VAE")
+        load_state_dict_strict(vae, vae_sd, log_name="Anima VAE", label="VAE weights")
     else:
         from modules_forge.nn.wan_vae_2d import Qwen2DVAE
 
@@ -158,8 +161,9 @@ def load_anima_vae(filepath=None):
             if k.endswith('.gamma') and v.dim() == 4:
                 vae_sd[k] = v.squeeze(-1)
 
+        console.kv("VAE type", "2D", width=20, indent=4)
         vae = Qwen2DVAE.from_config({})
-        load_state_dict_strict(vae, vae_sd, log_name="Anima VAE")
+        load_state_dict_strict(vae, vae_sd, log_name="Anima VAE", label="VAE weights")
 
     vae.latent_format = Wan21()
     vae.eval()
@@ -179,11 +183,12 @@ def load_anima_text_encoder(filepath=None):
             f"Please place the Qwen3-0.6B text encoder weights file in the text_encoders models folder."
         )
 
-    print(f"Loading Anima Text Encoder: {filepath}")
+    console.kv("Text encoder", os.path.basename(filepath), width=20, indent=4)
     te_sd = _load_safetensors_sd(filepath)
 
     text_encoder = Qwen3_06B({})
-    load_state_dict_strict(text_encoder, te_sd, log_name="Qwen3_06B", ignore_start="lm_head.")
+    ignore = [k for k in text_encoder.state_dict() if k.startswith(("lm_head.", "llm_adapter."))]
+    load_state_dict_strict(text_encoder, te_sd, log_name="Qwen3_06B", label="Text weights", ignore_start=ignore)
     text_encoder.eval()
     for param in text_encoder.parameters():
         param.requires_grad = False
@@ -196,7 +201,7 @@ def load_anima_transformer(state_dict):
     sd = strip_state_dict_prefix(state_dict)
     config = detect_anima_config_from_state_dict(sd)
 
-    print(f"Building Anima transformer: {config['model_channels']}ch, {config['num_blocks']} blocks, {config['crossattn_emb_channels']} crossattn")
+    console.kv("Transformer", f"{config['model_channels']}ch, {config['num_blocks']} blocks, {config['crossattn_emb_channels']} crossattn", width=20, indent=4)
     transformer = CosmosAnima(
         max_img_h=1024,
         max_img_w=1024,
@@ -218,7 +223,7 @@ def load_anima_transformer(state_dict):
         adaln_lora_dim=256,
     )
 
-    load_state_dict_strict(transformer, sd, log_name="Anima Transformer")
+    load_state_dict_strict(transformer, sd, log_name="Anima Transformer", label="Transformer weights")
 
     from ldm_patched.modules import model_management
     model_params = sum(param.numel() for param in transformer.parameters())
@@ -242,10 +247,12 @@ def load_anima_transformer(state_dict):
     if model_management.ck_enabled():
         from modules_forge.nn.anima import ck_attention_op
 
-        print("  Anima attention: Comfy-Kitchen INT8")
+        console.kv("Attention", "Comfy-Kitchen INT8", width=20, indent=4)
         for module in transformer.modules():
             if hasattr(module, "attn_op"):
                 module.attn_op = ck_attention_op
+    else:
+        console.kv("Attention", "PyTorch SDPA", width=20, indent=4)
 
     transformer.storage_dtype = dtype
     transformer.computation_dtype = dtype
@@ -266,14 +273,14 @@ def load_anima_tokenizers():
         try:
             tokenizer = Qwen2Tokenizer.from_pretrained(TOKENIZER_DIR)
         except Exception as e:
-            print(f"Failed to load Qwen2 tokenizer from {TOKENIZER_DIR}: {e}")
+            console.warn(f"Failed to load Qwen2 tokenizer from {TOKENIZER_DIR}: {e}")
 
     if tokenizer is None:
-        print("Qwen2 tokenizer not found locally; downloading from HuggingFace: Qwen/Qwen3-0.6B")
+        console.hint("Qwen2 tokenizer not found locally; downloading Qwen/Qwen3-0.6B")
         try:
             tokenizer = Qwen2Tokenizer.from_pretrained("Qwen/Qwen3-0.6B")
         except Exception as e:
-            print(f"Failed to load Qwen2 tokenizer from HuggingFace: {e}")
+            console.warn(f"Failed to load Qwen2 tokenizer from HuggingFace: {e}")
 
     if tokenizer is None:
         raise FileNotFoundError(
@@ -284,14 +291,14 @@ def load_anima_tokenizers():
         try:
             tokenizer_2 = T5TokenizerFast.from_pretrained(TOKENIZER2_DIR)
         except Exception as e:
-            print(f"Failed to load T5 tokenizer from {TOKENIZER2_DIR}: {e}")
+            console.warn(f"Failed to load T5 tokenizer from {TOKENIZER2_DIR}: {e}")
 
     if tokenizer_2 is None:
-        print("T5 tokenizer not found locally; downloading from HuggingFace: google-t5/t5-base")
+        console.hint("T5 tokenizer not found locally; downloading google-t5/t5-base")
         try:
             tokenizer_2 = T5TokenizerFast.from_pretrained("google-t5/t5-base")
         except Exception as e:
-            print(f"Failed to load T5 tokenizer from HuggingFace: {e}")
+            console.warn(f"Failed to load T5 tokenizer from HuggingFace: {e}")
 
     if tokenizer_2 is None:
         raise FileNotFoundError(
@@ -318,6 +325,11 @@ def _finalize_anima_components(transformer, vae, text_encoder):
     }
 
 
+def _load_llm_adapter(text_encoder, te_sd):
+    base_keys = [k for k in text_encoder.state_dict() if not k.startswith("llm_adapter.")]
+    load_state_dict_strict(text_encoder, te_sd, log_name="Qwen3_06B (llm_adapter)", label="LLM adapter", ignore_start=base_keys)
+
+
 def load_anima_components(path):
     if not os.path.isdir(path):
         raise NotADirectoryError(f"Anima model directory not found: {path}")
@@ -331,6 +343,8 @@ def load_anima_components(path):
 
     if index.get("_class_name") != "AnimaPipeline":
         raise ValueError(f"Not an Anima model: {path}")
+
+    console.section("Loading Anima model")
 
     te_path = os.path.join(path, "text_encoder")
     vae_path = os.path.join(path, "vae")
@@ -353,7 +367,7 @@ def load_anima_components(path):
 
     if te_sd:
         text_encoder = load_anima_text_encoder(te_file)
-        load_state_dict_strict(text_encoder, te_sd, log_name="Qwen3_06B (llm_adapter)", ignore_start="lm_head.")
+        _load_llm_adapter(text_encoder, te_sd)
     else:
         text_encoder = load_anima_text_encoder(te_file)
 
@@ -361,6 +375,7 @@ def load_anima_components(path):
 
 
 def load_anima_from_state_dict(state_dict, vae_path=None, te_path=None):
+    console.section("Loading Anima model")
     transformer_sd = strip_state_dict_prefix(state_dict)
 
     te_sd = {}
@@ -371,7 +386,7 @@ def load_anima_from_state_dict(state_dict, vae_path=None, te_path=None):
 
     if te_sd:
         text_encoder = load_anima_text_encoder(te_path)
-        load_state_dict_strict(text_encoder, te_sd, log_name="Qwen3_06B (llm_adapter)", ignore_start="lm_head.")
+        _load_llm_adapter(text_encoder, te_sd)
     else:
         text_encoder = load_anima_text_encoder(te_path)
 

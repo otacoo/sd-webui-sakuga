@@ -10,7 +10,7 @@ def initialize_forge():
 
     if args_parser.args.gpu_device_id is not None:
         os.environ["CUDA_VISIBLE_DEVICES"] = str(args_parser.args.gpu_device_id)
-        console.kv("Device override", args_parser.args.gpu_device_id)
+        console.kv("GPU override", args_parser.args.gpu_device_id)
 
     if args_parser.args.cuda_malloc:
         from modules_forge.cuda_malloc import try_cuda_malloc

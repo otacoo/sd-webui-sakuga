@@ -52,12 +52,12 @@ def process_anima_lora(lora, blocks):
     if lora_blocks == blocks or lora_blocks == 0:
         return True
     if lora_blocks > blocks:
-        print(f"[LORA] Cannot map larger Anima LoRA ({lora_blocks}) to model ({blocks})")
+        ldm_patched.modules.utils.print_status(f"[LORA] Cannot map larger Anima LoRA ({lora_blocks}) to model ({blocks})")
         return False
 
     mapping = ANIMA_BLOCK_MAPPINGS.get((lora_blocks, blocks))
     if mapping is None:
-        print(f"[LORA] No Anima block mapping for {lora_blocks} -> {blocks}")
+        ldm_patched.modules.utils.print_status(f"[LORA] No Anima block mapping for {lora_blocks} -> {blocks}")
         return False
 
     reverse = {}

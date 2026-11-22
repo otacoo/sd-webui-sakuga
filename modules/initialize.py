@@ -4,6 +4,7 @@ import os
 import sys
 import warnings
 
+from modules import console
 from modules.timer import startup_timer
 
 
@@ -101,7 +102,9 @@ def initialize_rest(*, reload_script_modules=False):
     from modules import shared, upscaler, scripts
     if cmd_opts.ui_debug_mode:
         shared.sd_upscalers = upscaler.UpscalerLanczos().scalers
-        scripts.load_scripts()
+        console.section("Extensions")
+        with console.indent_output():
+            scripts.load_scripts()
         return
 
     from modules import sd_models
@@ -112,7 +115,8 @@ def initialize_rest(*, reload_script_modules=False):
     localization.list_localizations(cmd_opts.localizations_dir)
     startup_timer.record("list localizations")
 
-    with startup_timer.subcategory("load scripts"):
+    console.section("Extensions")
+    with console.indent_output(), startup_timer.subcategory("load scripts"):
         scripts.load_scripts()
 
     from modules import sakuga_extras
@@ -139,10 +143,6 @@ def initialize_rest(*, reload_script_modules=False):
     from modules import sd_unet
     sd_unet.list_unets()
     startup_timer.record("scripts list_unets")
-
-    from modules_forge import main_thread
-    import modules.sd_models
-    main_thread.async_run(modules.sd_models.model_data.get_sd_model)
 
     from modules import ui_extra_networks
     ui_extra_networks.initialize()

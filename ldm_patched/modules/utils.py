@@ -17,6 +17,13 @@ import modules.safe
 logger = logging.getLogger(__name__)
 
 
+def print_status(message):
+    if tqdm._instances:
+        tqdm.write(message)
+    else:
+        print(message)
+
+
 def load_torch_file(ckpt, safe_load=False, device=None):
     if device is None:
         device = torch.device("cpu")

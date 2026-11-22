@@ -157,9 +157,9 @@ def get_total_memory(dev=None, torch_total_too=False):
 total_vram = get_total_memory(get_torch_device()) / (1024 * 1024)
 total_ram = psutil.virtual_memory().total / (1024 * 1024)
 if cpu_state is CPUState.CPU:
-    console.kv("Memory", f"GPU: N/A | System: {round(total_ram / 1024)} GB RAM", width=7)
+    console.kv("Memory", f"GPU: N/A | System: {round(total_ram / 1024)} GB RAM")
 else:
-    console.kv("Memory", f"GPU: {round(total_vram / 1024)} GB VRAM | System: {round(total_ram / 1024)} GB RAM", width=7)
+    console.kv("Memory", f"GPU: {round(total_vram / 1024)} GB VRAM | System: {round(total_ram / 1024)} GB RAM")
 
 if not args.always_normal_vram and not args.always_cpu:
     if total_vram <= 4096:
@@ -290,7 +290,7 @@ if ENABLE_PYTORCH_ATTENTION:
 try:
     if args.fast_fp16 and is_nvidia():
         torch.backends.cuda.matmul.allow_fp16_accumulation = True
-        console.kv("FP16 accumulation", "on")
+        console.kv("FP16 accum", "on")
 except Exception:
     pass
 

@@ -49,6 +49,11 @@ def api_only_worker():
     script_callbacks.before_ui_callback()
     script_callbacks.app_started_callback(None, app)
 
+    from modules import sd_models
+    from modules_forge import main_thread
+
+    main_thread.async_run(sd_models.model_data.get_sd_model)
+
     console.ready(startup_timer.summary())
     api.launch(server_name=initialize_util.gradio_server_name(), port=cmd_opts.port if cmd_opts.port else 7861, root_path=f"/{cmd_opts.subpath}" if cmd_opts.subpath else "")
 
@@ -64,10 +69,12 @@ def webui_worker():
             ui_tempdir.cleanup_tmpdr()
             startup_timer.record("cleanup temp dir")
 
-        script_callbacks.before_ui_callback()
+        with console.indent_output():
+            script_callbacks.before_ui_callback()
         startup_timer.record("scripts before_ui_callback")
 
-        shared.demo = ui.create_ui()
+        with console.indent_output():
+            shared.demo = ui.create_ui()
         startup_timer.record("create ui")
 
         if not cmd_opts.no_gradio_queue:
@@ -129,8 +136,14 @@ def webui_worker():
 
         startup_timer.record("add APIs")
 
-        with startup_timer.subcategory("app_started_callback"):
+        with startup_timer.subcategory("app_started_callback"), console.indent_output():
             script_callbacks.app_started_callback(shared.demo, app)
+
+        from modules import sd_models
+        from modules_forge import main_thread
+
+        main_thread.run_and_wait_result(sd_models.model_data.get_sd_model)
+        startup_timer.record("initial model load")
 
         timer.startup_record = startup_timer.dump()
         console.ready(startup_timer.summary(), local_url=local_url, share_url=share_url)
