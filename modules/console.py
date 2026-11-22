@@ -7,7 +7,6 @@ when the output is redirected, so logs and issue reports stay clean.
 
 import os
 import sys
-import textwrap
 
 from rich.console import Console
 from rich.text import Text
@@ -70,20 +69,20 @@ _console = Console(highlight=False, emoji=False, soft_wrap=False)
 def banner():
     _console.print()
     _console.print(Text("-" * 58, style="dim"))
-    _console.print(Text.assemble((" SAKUGA", "bold cyan"), ("  Stable Diffusion WebUI", "dim")))
+    _console.print(Text.assemble(("SAKUGA", "bold cyan"), ("  Stable Diffusion WebUI", "dim")))
     _console.print(Text("-" * 58, style="dim"))
 
 
 def section(title):
     _console.print()
-    text = Text("  ")
+    text = Text()
     text.append(">", style="bold cyan")
     text.append(" ")
     text.append(title, style="bold")
     _console.print(text)
 
 
-def kv(label, value, width=14, indent=2):
+def kv(label, value, width=14, indent=0):
     label = f"{label}:"
     text = Text(" " * indent)
     text.append(label, style="dim")
@@ -97,13 +96,13 @@ def url(local_url=None, share_url=None):
         return
     _console.print()
     if local_url:
-        text = Text("  ")
+        text = Text()
         text.append("Running on local URL:", style="dim")
         text.append("  ")
         text.append(local_url.rstrip("/"), style="cyan underline")
         _console.print(text)
     if share_url:
-        text = Text("  ")
+        text = Text()
         text.append("Public URL:", style="dim")
         text.append("  ")
         text.append(share_url, style="cyan underline")
@@ -112,12 +111,12 @@ def url(local_url=None, share_url=None):
 
 def command(args):
     if args:
-        _console.print(Text("  " + " ".join(args), style="dim"))
+        _console.print(Text(" ".join(args), style="dim"))
     _console.print()
 
 
 def hint(message):
-    text = Text("  ")
+    text = Text()
     text.append("Hint:", style="bold yellow")
     text.append(" ")
     text.append(str(message))
@@ -125,7 +124,7 @@ def hint(message):
 
 
 def warn(message):
-    text = Text("  ")
+    text = Text()
     text.append("Warning:", style="bold yellow")
     text.append(" ")
     text.append(str(message))
@@ -137,23 +136,18 @@ def ready(summary, local_url=None, share_url=None):
     _console.print()
     _console.print(Text("-" * 58, style="dim"))
 
-    text = Text("  ")
+    text = Text()
     text.append("Ready", style="bold green")
     text.append(" in ")
     text.append(total, style="bold")
     _console.print(text)
 
     if details:
-        lines = textwrap.wrap(details.rstrip(")"), width=47) or [""]
-        row = Text("  ")
-        row.append("Timings:", style="dim")
-        row.append(" ")
-        row.append(lines[0], style="dim")
-        _console.print(row)
-        for extra in lines[1:]:
-            row = Text(" " * 11)
-            row.append(extra, style="dim")
-            _console.print(row)
+        text = Text()
+        text.append("Timings:", style="dim")
+        text.append(" ")
+        text.append(details.rstrip(")"), style="dim")
+        _console.print(text, soft_wrap=True)
 
     if local_url or share_url:
         url(local_url, share_url)
