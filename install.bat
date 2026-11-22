@@ -29,6 +29,15 @@ if !errorlevel! == 1 (
     echo   Added --sage
 )
 
+:: Comfy-Kitchen attention
+echo.
+echo Use Comfy-Kitchen INT8 attention for Anima? (NVIDIA only)
+choice /c YN /n /m "[Y/N]: "
+if !errorlevel! == 1 (
+    set "ARGS=!ARGS! --use-ck-attention"
+    echo   Added --use-ck-attention
+)
+
 :: uv (fast package manager)
 echo.
 echo Use uv package manager? (faster dependency installs)
@@ -87,7 +96,7 @@ echo Writing configuration to !NEW_BAT!...
     echo.
     echo set COMMANDLINE_ARGS=!ARGS!
     echo.
-    echo :: --sage --uv
+    echo :: --sage --use-ck-attention --uv
     echo :: --pin-shared-memory --cuda-malloc --cuda-stream
     echo :: --skip-python-version-check --skip-torch-cuda-test --skip-version-check --skip-prepare-environment --skip-install
     echo.
