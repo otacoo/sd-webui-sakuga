@@ -17,7 +17,6 @@ shared.options_templates.update(
             "sd_lora": shared.OptionInfo("None", "Append LoRA to prompt", gr.Dropdown, lambda: {"choices": ["None", *networks.available_networks]}, refresh=networks.list_available_networks),
             "lora_preferred_name": shared.OptionInfo("Alias", "When adding syntax to prompt, refer to LoRA by", gr.Radio, {"choices": ("Alias", "Filename")}),
             "lora_add_hashes_to_infotext": shared.OptionInfo(True, "Append LoRA hashes to infotext"),
-            "lora_show_all": shared.OptionInfo(False, "Always show all LoRA cards").info("otherwise, those detected as for incompatible version of Stable Diffusion will be hidden"),
         },
     )
 )

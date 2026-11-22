@@ -18,6 +18,8 @@ All notable changes to Sakuga are listed here.
 - **New feature:** Delete the selected gallery image directly from the image viewer.
 - **New feature:** Extra Networks folder filters, labelled `Folders:`, with an `All` button. The last selected folder is remembered per page.
 - **New option:** Hidden Subdirectories in Extra Networks, with comma-separated folder names or relative paths.
+- **New option:** Choose whether adding a LoRA to the prompt inserts it at the cursor or at the end. The default keeps the old end-of-prompt behavior.
+- **Change:** LoRA cards are always shown. The version-based hiding and its "Always show all LoRA cards" option were removed, so LyCORIS and other working adapters no longer disappear.
 - **New feature:** Extra Networks metadata shows the model's absolute path, and the card action can open the model in Explorer.
 - **New feature:** Positive and negative prompt boxes grow automatically as you type and shrink again when text is removed. Positive prompts keep a taller minimum height than negative prompts.
 - **New feature:** Width and Height sliders now go up to 4096 pixels (4096×4096 = 16 MP), including Hires. fix resize fields. Old `ui-config.json` limits are updated automatically.

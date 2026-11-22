@@ -48,17 +48,6 @@ class ExtraNetworksPageLora(ExtraNetworksPage):
         sd_version = item["user_metadata"].get("sd version")
         if sd_version in network.SDVersion.__members__:
             item["sd_version"] = sd_version
-            sd_version = network.SDVersion[sd_version]
-        else:
-            sd_version = lora_on_disk.sd_version
-
-        if enable_filter and not shared.opts.lora_show_all:
-            if shared.sd_model is None:
-                pass
-            elif shared.sd_model.is_sdxl and sd_version != network.SDVersion.SDXL:
-                return None
-            elif shared.sd_model.is_sd1 and sd_version != network.SDVersion.SD1:
-                return None
 
         alias = lora_on_disk.get_alias()
         activation_text = item["user_metadata"].get("activation text")
