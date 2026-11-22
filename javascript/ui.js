@@ -254,12 +254,55 @@ function setupResolutionPasting(tabname) {
     }
 }
 
+const promptTextareaIds = ['txt2img_prompt', 'txt2img_neg_prompt', 'img2img_prompt', 'img2img_neg_prompt'];
+
+function resizePromptTextarea(textarea) {
+    textarea.style.height = 'auto';
+    const height = textarea.scrollHeight;
+    if (height > 0) {
+        textarea.style.height = `${height + 2}px`;
+        textarea.dataset.autosizeValue = textarea.value;
+    }
+}
+
+function setupPromptAutosize() {
+    for (const id of promptTextareaIds) {
+        const textarea = gradioApp().querySelector(`#${id} > label > textarea`);
+        if (!textarea) continue;
+
+        if (!textarea.dataset.autosize) {
+            textarea.dataset.autosize = 'true';
+            textarea.style.overflowY = 'hidden';
+            textarea.addEventListener('input', function () {
+                resizePromptTextarea(textarea);
+            });
+        }
+
+        if (textarea.dataset.autosizeValue !== textarea.value) {
+            resizePromptTextarea(textarea);
+        }
+    }
+}
+
+function resizeVisiblePromptTextareas() {
+    for (const id of promptTextareaIds) {
+        const textarea = gradioApp().querySelector(`#${id} > label > textarea`);
+        if (textarea && textarea.offsetParent) resizePromptTextarea(textarea);
+    }
+}
+
+window.addEventListener('resize', resizeVisiblePromptTextareas);
+
 onUiLoaded(function () {
     showRestoreProgressButton('txt2img', localGet("txt2img_task_id"));
     showRestoreProgressButton('img2img', localGet("img2img_task_id"));
     setupResolutionPasting('txt2img');
     setupResolutionPasting('img2img');
+    setupPromptAutosize();
 });
+
+onAfterUiUpdate(setupPromptAutosize);
+onUiTabChange(resizeVisiblePromptTextareas);
 
 
 function ask_for_style_name(_, prompt_text, negative_prompt_text) {

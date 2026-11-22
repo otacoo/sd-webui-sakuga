@@ -1596,8 +1596,14 @@ body.resizing .resize-handle {
     height: 75vh !important;
 }
 
-#txt2img_prompt > label > textarea {
+#txt2img_prompt > label > textarea,
+#img2img_prompt > label > textarea {
     min-height: 145px !important;
+}
+
+#txt2img_neg_prompt > label > textarea,
+#img2img_neg_prompt > label > textarea {
+    min-height: 90px !important;
 }
 
 .thumbnail-item {
