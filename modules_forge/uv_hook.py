@@ -1,6 +1,7 @@
 import os
 import shlex
 import subprocess
+import sys
 from copy import copy
 from functools import wraps
 
@@ -39,7 +40,7 @@ def patch(symlink: bool):
 
         cmd = [arg for arg in cmd if arg not in BAD_FLAGS]
 
-        modified_command: list[str] = ["uv", "pip", *cmd]
+        modified_command: list[str] = ["uv", "pip", *cmd, "--python", sys.executable]
 
         if symlink:
             modified_command.extend(["--link-mode", "symlink"])
