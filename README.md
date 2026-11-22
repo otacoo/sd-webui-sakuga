@@ -205,6 +205,7 @@ Anima Edit is reference conditioning, not a normal img2img denoise. Select the E
 | `--reinstall-torch` | Reinstall the pinned PyTorch build (use once after updating) |
 | `--flash` | Install FlashAttention (optional; native SDPA is recommended) |
 | `--sage` | Install SageAttention (optional; native SDPA is recommended) |
+| `--use-ck-attention` | Install Comfy-Kitchen and use its INT8 attention for Anima (NVIDIA only) |
 | `--cuda-malloc` | Use CUDA malloc for memory allocation |
 | `--cuda-stream` | Overlap compute and data transfer |
 | `--pin-shared-memory` | Use pinned shared memory |
@@ -214,6 +215,14 @@ Anima Edit is reference conditioning, not a normal img2img denoise. Select the E
 | `--adv-xyz` | Show advanced X/Y/Z Plot options |
 
 Memory-related flags can cause instability or out-of-memory errors on some systems. Disable them if you run into trouble.
+
+For Anima, add:
+
+```bat
+start-webui.bat --use-ck-attention
+```
+
+`--use-ck-attention` only applies to Anima on NVIDIA GPUs with compute capability 7.5 or newer. It is not available on AMD, Intel, Apple, or CPU-only systems, where Sakuga falls back to PyTorch SDPA. The gain is small at 1024px and grows at 1536px and above. INT8 attention is approximate, so compare outputs if you need exact parity.
 
 ## Updating
 
