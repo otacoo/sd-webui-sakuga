@@ -69,12 +69,10 @@ def webui_worker():
             ui_tempdir.cleanup_tmpdr()
             startup_timer.record("cleanup temp dir")
 
-        with console.indent_output():
-            script_callbacks.before_ui_callback()
+        script_callbacks.before_ui_callback()
         startup_timer.record("scripts before_ui_callback")
 
-        with console.indent_output():
-            shared.demo = ui.create_ui()
+        shared.demo = ui.create_ui()
         startup_timer.record("create ui")
 
         if not cmd_opts.no_gradio_queue:
@@ -136,7 +134,7 @@ def webui_worker():
 
         startup_timer.record("add APIs")
 
-        with startup_timer.subcategory("app_started_callback"), console.indent_output():
+        with startup_timer.subcategory("app_started_callback"):
             script_callbacks.app_started_callback(shared.demo, app)
 
         from modules import sd_models

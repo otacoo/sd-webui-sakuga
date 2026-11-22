@@ -9,6 +9,7 @@ import threading
 import safetensors.torch
 import torch
 from ldm_patched.modules import model_management
+from ldm_patched.modules.utils import print_status
 from modules import cache, console, devices, errors, extra_networks, hashes, model_paths, modelloader, paths, processing, script_callbacks, sd_vae, shared
 from modules.timer import Timer
 from modules_forge import forge_loader
@@ -332,12 +333,12 @@ def get_checkpoint_state_dict(checkpoint_info: CheckpointInfo, timer):
 
     if checkpoint_info in checkpoints_loaded:
         # use checkpoint cache
-        print(f"Loading weights [{sd_model_hash}] from cache")
+        print_status(f"Loading weights [{sd_model_hash}] from cache")
         # move to end as latest
         checkpoints_loaded.move_to_end(checkpoint_info)
         return checkpoints_loaded[checkpoint_info]
 
-    print(f"Loading weights [{sd_model_hash}] from {checkpoint_info.filename}")
+    print_status(f"Loading weights [{sd_model_hash}] from {checkpoint_info.filename}")
     res = read_state_dict(checkpoint_info.filename)
     timer.record("load weights from disk")
 
@@ -514,7 +515,7 @@ def load_model(checkpoint_info=None, already_loaded_state_dict=None):
 
     timer.record("calculate empty prompt")
 
-    print(f"Model loaded in {timer.summary()}.")
+    print_status(f"Model loaded in {timer.summary()}.")
 
     gc.collect()
     return sd_model

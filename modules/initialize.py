@@ -103,8 +103,7 @@ def initialize_rest(*, reload_script_modules=False):
     if cmd_opts.ui_debug_mode:
         shared.sd_upscalers = upscaler.UpscalerLanczos().scalers
         console.section("Extensions")
-        with console.indent_output():
-            scripts.load_scripts()
+        scripts.load_scripts()
         return
 
     from modules import sd_models
@@ -116,7 +115,7 @@ def initialize_rest(*, reload_script_modules=False):
     startup_timer.record("list localizations")
 
     console.section("Extensions")
-    with console.indent_output(), startup_timer.subcategory("load scripts"):
+    with startup_timer.subcategory("load scripts"):
         scripts.load_scripts()
 
     from modules import sakuga_extras

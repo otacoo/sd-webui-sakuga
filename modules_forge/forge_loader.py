@@ -7,6 +7,7 @@ from omegaconf import OmegaConf
 
 import ldm_patched.modules.clip_vision
 import ldm_patched.modules.utils
+from ldm_patched.modules.utils import print_status
 from ldm_patched.ldm.util import instantiate_from_config
 from ldm_patched.modules import model_detection, model_management
 from ldm_patched.modules.model_base import ModelType, model_sampling
@@ -223,7 +224,7 @@ def load_checkpoint_guess_config(sd, output_vae=True, output_clip=True, output_c
 
     if output_model:
         initial_load_device = model_management.unet_initial_load_device(parameters, unet_dtype)
-        print("UNet dtype:", unet_dtype)
+        print_status(f"UNet dtype: {unet_dtype}")
         model = model_config.get_model(sd, "model.diffusion_model.", device=initial_load_device)
         model.load_model_weights(sd, "model.diffusion_model.")
 
@@ -235,7 +236,7 @@ def load_checkpoint_guess_config(sd, output_vae=True, output_clip=True, output_c
             weight_inplace_update=shared.opts.extra_networks_patch_inplace,
         )
         if initial_load_device != torch.device("cpu"):
-            print("loaded straight to GPU")
+            print_status("loaded straight to GPU")
             model_management.load_model_gpu(unet)
 
     if output_vae:
@@ -255,7 +256,7 @@ def load_checkpoint_guess_config(sd, output_vae=True, output_clip=True, output_c
 
     left_over = sd.keys()
     if len(left_over) > 0:
-        print("left over keys:", left_over)
+        print_status(f"left over keys: {left_over}")
 
     return ForgeObjects(unet, clip, vae, clipvision)
 
