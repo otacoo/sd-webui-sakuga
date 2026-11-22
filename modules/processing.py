@@ -1206,6 +1206,9 @@ class StableDiffusionProcessingTxt2Img(StableDiffusionProcessing):
                 self.truncate_x = (self.hr_upscale_to_x - target_w) // opt_f
                 self.truncate_y = (self.hr_upscale_to_y - target_h) // opt_f
 
+        self.hr_upscale_to_x = int(round(self.hr_upscale_to_x / opt_f)) * opt_f
+        self.hr_upscale_to_y = int(round(self.hr_upscale_to_y / opt_f)) * opt_f
+
     def init(self, all_prompts, all_seeds, all_subseeds):
         if not self.enable_hr:
             return
