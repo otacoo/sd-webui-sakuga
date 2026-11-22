@@ -3,7 +3,7 @@ LoRA Style Explorer - SD WebUI Script
 Generates one image per LoRA from a list, switching LoRAs automatically.
 Most of this code is from the X/Y/Z plot from AUTOMATIC1111/stable-diffusion-webui.
 Works with auto complete like the sd-webui-tagcomplete extension.
-Every LoRA entry and its trigger word needs to be separated by a comma, e.g. <lora:Example01:1.0> trigger_word traditional_media, <lora:OtherLora:0.75> trigger_word,
+Each entry starts at a <lora:...> tag and continues until the next tag, so commas inside trigger words are preserved, e.g. <lora:Example01:1.0> trigger_word, trigger_word2, <lora:OtherLora:0.75> trigger_word.
 """
 
 import os
@@ -46,11 +46,23 @@ def prompt_with_lora_snippet(prompt: str, snippet: str, lora_names_in_list: set)
     return f"{cleaned} {snippet}".strip() if snippet else cleaned
 
 
-def csv_string_to_list(text: str):
-    """Split by comma and strip each item."""
-    if not text or not text.strip():
+def lora_entries_from_text(text: str):
+    """Split at each LoRA tag; commas inside trigger words are preserved."""
+    text = (text or "").strip()
+    if not text:
         return []
-    return [x.strip() for x in text.split(",") if x.strip()]
+
+    matches = list(RE_LORA_TAG.finditer(text))
+    if not matches:
+        return [text]
+
+    entries = []
+    for i, match in enumerate(matches):
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        entry = text[match.start():end].strip().strip(",").strip()
+        if entry:
+            entries.append(entry)
+    return entries
 
 
 def _wrap_text_to_width(draw, text, font, max_width, padding=4):
@@ -158,7 +170,7 @@ class Script(scripts.Script):
         with gr.Column():
             lora_list = gr.Textbox(
                 label="LoRA list",
-                placeholder="<lora:Name:1.0> trigger_word, <lora:Other:0.8> ... (comma-separated)",
+                placeholder="<lora:Name:1.0> trigger_word, trigger_word2, <lora:Other:0.8> ... (each entry starts at a LoRA tag)",
                 lines=3,
                 elem_id=self.elem_id("lora_list"),
                 elem_classes=["prompt", "autocomplete"],
@@ -194,9 +206,9 @@ class Script(scripts.Script):
         return [lora_list, create_grid, margin_size]
 
     def run(self, p, lora_list, create_grid, margin_size):
-        lora_entries = csv_string_to_list(lora_list or "")
+        lora_entries = lora_entries_from_text(lora_list or "")
         if not lora_entries:
-            errors.report("LoRA Style Explorer: No LoRAs in list. Add entries like <lora:Name:1.0> trigger_word (comma-separated).", exc_info=False)
+            errors.report("LoRA Style Explorer: No LoRAs in list. Add entries starting with a <lora:...> tag.", exc_info=False)
             return Processed(p, [], p.seed, "")
 
         # Only remove LoRAs from the list, leave other LoRAs in the prompt as-is
