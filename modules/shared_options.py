@@ -333,6 +333,7 @@ Enable it below to use the tree view.
             "extra_networks_card_order_field": OptionInfo("Path", "Default sorting method for Extra Networks cards", gr.Dropdown, {"choices": ("Path", "Name", "Date Created", "Date Modified")}).needs_reload_ui(),
             "extra_networks_card_order": OptionInfo("Ascending", "Default sorting order for Extra Networks cards", gr.Radio, {"choices": ("Ascending", "Descending")}).needs_reload_ui(),
             "extra_networks_add_text_separator": OptionInfo(" ", "Extra Networks Separator").info("additional text to insert before the Extra Networks syntax"),
+            "extra_networks_lora_insert_position": OptionInfo("End of prompt", "When adding a LoRA to prompt, insert it at", gr.Radio, {"choices": ("Cursor", "End of prompt")}),
             "ui_extra_networks_tab_reorder": OptionInfo("", "Extra Networks Tab Order").info('tab names separated by "," character; empty = default').needs_reload_ui(),
             "textual_inversion_add_hashes_to_infotext": OptionInfo(True, "Append Textual Inversion hashes to infotext"),
             "extra_networks_patch_inplace": OptionInfo(False, "Patch the LoRAs in-place").info("reduce peak memory usage").needs_restart(),

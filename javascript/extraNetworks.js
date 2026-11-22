@@ -261,9 +261,28 @@ function tryToRemoveExtraNetworkFromPrompt(textarea, text, isNeg) {
     return false;
 }
 
+function addExtraNetworkToPrompt(text, textArea) {
+    if (opts.extra_networks_lora_insert_position === 'Cursor' && /^<(lora|lyco):/.test(text)) {
+        const start = textArea.selectionStart ?? textArea.value.length;
+        const end = textArea.selectionEnd ?? start;
+        const before = textArea.value.slice(0, start);
+        const after = textArea.value.slice(end);
+        const separator = opts.extra_networks_add_text_separator;
+        const prefix = before && !/\s$/.test(before) ? separator : '';
+        const suffix = after && !/^\s/.test(after) ? separator : '';
+        const insertion = prefix + text + suffix;
+
+        textArea.value = before + insertion + after;
+        textArea.setSelectionRange(start + insertion.length, start + insertion.length);
+        return;
+    }
+
+    textArea.value = textArea.value + opts.extra_networks_add_text_separator + text;
+}
+
 function updatePromptArea(text, textArea, isNeg) {
     if (!tryToRemoveExtraNetworkFromPrompt(textArea, text, isNeg)) {
-        textArea.value = textArea.value + opts.extra_networks_add_text_separator + text;
+        addExtraNetworkToPrompt(text, textArea);
     }
 
     updateInput(textArea);
