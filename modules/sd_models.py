@@ -490,6 +490,7 @@ def load_model(checkpoint_info=None, already_loaded_state_dict=None):
             checkpoints_loaded.popitem(last=False)
 
     sd_model = forge_loader.load_model_for_a1111(timer=timer, checkpoint_info=checkpoint_info, state_dict=state_dict)
+    timer.record("load model")
     sd_model.filename = checkpoint_info.filename
 
     del state_dict

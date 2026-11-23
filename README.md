@@ -205,6 +205,7 @@ Anima Edit is reference conditioning, not a normal img2img denoise. Select the E
 | `--flash` | Install FlashAttention (optional; native SDPA is recommended) |
 | `--sage` | Install SageAttention (optional; native SDPA is recommended) |
 | `--use-ck-attention` | Install Comfy-Kitchen and use its INT8 attention for SD1/SDXL/Anima (NVIDIA only) |
+| `--skip-initial-model-load` | Start without preloading the selected model; load it on first use |
 | `--cuda-malloc` | Use CUDA malloc for memory allocation |
 | `--cuda-stream` | Overlap compute and data transfer |
 | `--pin-shared-memory` | Use pinned shared memory |
