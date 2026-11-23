@@ -166,7 +166,7 @@ def apply_setting(key, value):
 
 
 def update_shift_visibility():
-    model = shared.sd_model
+    model = sd_models.model_data.sd_model
     if model is not None:
         is_anima = bool(getattr(model, "is_anima", False))
     else:
@@ -914,7 +914,10 @@ def create_ui():
         settings.text_settings.change(fn=update_shift_visibility, inputs=[], outputs=[txt2img_shift, img2img_shift], queue=False, show_progress=False)
         demo.load(fn=update_shift_visibility, inputs=[], outputs=[txt2img_shift, img2img_shift], queue=False, show_progress=False)
 
-        update_image_cfg_scale_visibility = lambda: gr.update(visible=shared.sd_model and shared.sd_model.cond_stage_key == "edit")
+        def update_image_cfg_scale_visibility():
+            model = sd_models.model_data.sd_model
+            return gr.update(visible=bool(model and model.cond_stage_key == "edit"))
+
         settings.text_settings.change(fn=update_image_cfg_scale_visibility, inputs=[], outputs=[image_cfg_scale])
         demo.load(fn=update_image_cfg_scale_visibility, inputs=[], outputs=[image_cfg_scale])
 

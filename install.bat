@@ -96,9 +96,11 @@ echo Writing configuration to !NEW_BAT!...
     echo.
     echo set COMMANDLINE_ARGS=!ARGS!
     echo.
-    echo :: --sage --use-ck-attention --uv
+    echo :: --use-ck-attention --fast-fp16
+    echo :: --skip-initial-model-load --skip-prepare-environment --skip-install
+    echo :: --sage --flash --uv
     echo :: --pin-shared-memory --cuda-malloc --cuda-stream
-    echo :: --skip-python-version-check --skip-torch-cuda-test --skip-version-check --skip-prepare-environment --skip-install
+    echo :: --skip-python-version-check --skip-torch-cuda-test --skip-version-check 
     echo.
     echo call %%~dp0webui.bat
 ) > "!NEW_BAT!"
