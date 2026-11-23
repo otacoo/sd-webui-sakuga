@@ -204,7 +204,7 @@ Anima Edit is reference conditioning, not a normal img2img denoise. Select the E
 | `--reinstall-torch` | Reinstall the pinned PyTorch build (use once after updating) |
 | `--flash` | Install FlashAttention (optional; native SDPA is recommended) |
 | `--sage` | Install SageAttention (optional; native SDPA is recommended) |
-| `--use-ck-attention` | Install Comfy-Kitchen and use its INT8 attention for Anima (NVIDIA only) |
+| `--use-ck-attention` | Install Comfy-Kitchen and use its INT8 attention for SD1/SDXL/Anima (NVIDIA only) |
 | `--cuda-malloc` | Use CUDA malloc for memory allocation |
 | `--cuda-stream` | Overlap compute and data transfer |
 | `--pin-shared-memory` | Use pinned shared memory |

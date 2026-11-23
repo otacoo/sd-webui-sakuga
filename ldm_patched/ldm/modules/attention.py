@@ -277,7 +277,20 @@ def attention_flash(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, heads, ma
     return out.transpose(1, 2).reshape(b, -1, heads * dim_head)
 
 
-if model_management.sage_enabled():
+def attention_ck(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, heads, mask=None):
+    from comfy_kitchen import int8_attention
+
+    b, _, dim_head = q.shape
+    dim_head //= heads
+    q, k, v = map(lambda t: t.view(b, -1, heads, dim_head).transpose(1, 2), (q, k, v))
+    out = int8_attention(q, k, v, attn_mask=mask)
+    return out.transpose(1, 2).reshape(b, -1, heads * dim_head)
+
+
+if model_management.ck_enabled():
+    attention_name = "Comfy-Kitchen INT8"
+    optimized_attention = attention_ck
+elif model_management.sage_enabled():
     match args.sage2_function:
         case SageAttentionFuncs.auto:
             attention_name = "SageAttention"
@@ -301,9 +314,6 @@ elif model_management.pytorch_attention_enabled():
 else:
     attention_name = "basic"
     optimized_attention = attention_basic
-
-if model_management.ck_enabled():
-    attention_name = f"{attention_name} | Anima: Comfy-Kitchen INT8"
 
 console.kv("Attention", attention_name)
 

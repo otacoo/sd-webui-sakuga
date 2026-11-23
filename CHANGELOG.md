@@ -11,7 +11,7 @@ All notable changes to Sakuga are listed here.
 - **New feature:** Anima RGBA support with 4-channel VAE decoding, transparent PNG saving, and alpha generation. Requires an RGBA VAE and LoRA.
 - **New option:** `[Anima] Enable Shift` adds the Shift slider for Anima models. Higher values add variation.
 - **New feature:** Native PyTorch 2.15 with SDPA; xformers is no longer recommended.
-- **New option:** Add support for Comfy-Kitchen INT8 attention for Anima on supported NVIDIA GPUs
+- **New option:** Add support for Comfy-Kitchen INT8 attention on supported NVIDIA GPUs
 - **New feature:** Queue the current prompt while another generation runs, with placement and notification settings.
 - **New feature:** Footer links to list all models or unload loaded models; can be hidden.
 - **New feature:** Transparent Background postprocessing in Extras, with optional background-removal engines.
